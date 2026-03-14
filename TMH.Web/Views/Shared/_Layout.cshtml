@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewBag.Title ?? "Phòng Khám Tai Mũi Họng")</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+<!--
+    _Layout.cshtml là "khung" dùng chung cho toàn bộ Web App.
+    Mọi trang đều kế thừa layout này. Phần nội dung riêng của từng trang
+    được chèn vào @RenderBody().
+
+    Header thay đổi động theo trạng thái đăng nhập:
+      - Chưa đăng nhập: hiển thị nút "Đăng nhập" và "Đăng ký"
+      - Đã đăng nhập: hiển thị tên người dùng, role, và dropdown menu
+-->
+
+@{
+    // Đọc trạng thái đăng nhập từ Session (được set trong AccountController)
+    bool   isLoggedIn = Context.Session.GetString("JwtToken") != null;
+    string userName   = Context.Session.GetString("UserName") ?? "";
+    string userRole   = Context.Session.GetString("UserRole") ?? "";
+
+    // Dịch role code → tên hiển thị tiếng Việt
+    string roleDisplay = userRole switch
+    {
+        "Admin"   => "Quản trị viên",
+        "Doctor"  => "Bác sĩ",
+        "Staff"   => "Lễ tân / Nhân viên",
+        "Patient" => "Bệnh nhân",
+        _         => ""
+    };
+
+    // Initials cho avatar (2 chữ đầu của tên)
+    string initials = userName.Length >= 2 ? userName[..2].ToUpper() : "??";
+}
+
+<!-- ===== NAVBAR ===== -->
+<nav class="nav">
+    <div class="nav-logo">
+        <div class="logo-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 3v14M3 10h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <a asp-controller="Home" asp-action="Index" class="logo-name">
+            Phòng Khám <span>Tai Mũi Họng</span>
+        </a>
+    </div>
+
+    <div class="nav-links">
+        <a asp-controller="Home" asp-action="Index"
+           class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
+            Trang chủ
+        </a>
+        <a href="#dich-vu" class="nav-link">Dịch vụ</a>
+        <a href="#bac-si"  class="nav-link">Bác sĩ</a>
+        <a href="#tin-tuc" class="nav-link">Tin tức</a>
+        <a asp-controller="Home" asp-action="Contact" class="nav-link">Liên hệ</a>
+    </div>
+
+    <div class="nav-actions">
+        @if (!isLoggedIn)
+        {
+            <!-- Chưa đăng nhập: hiện nút Đăng nhập & Đăng ký -->
+            <a asp-controller="Account" asp-action="Login" class="btn-outline">Đăng nhập</a>
+            <a asp-controller="Account" asp-action="Register" class="btn-solid">Đăng ký</a>
+        }
+        else
+        {
+            <!-- Đã đăng nhập: hiện avatar + dropdown menu -->
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-toggle" onclick="toggleDropdown()">
+                    <div class="user-avatar-sm">@initials</div>
+                    <div class="user-toggle-info">
+                        <span class="user-toggle-name">@userName</span>
+                        <span class="user-toggle-role">@roleDisplay</span>
+                    </div>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="opacity:.5">
+                        <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
+
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <!-- Menu items khác nhau tùy theo Role -->
+                    @if (userRole == "Patient")
+                    {
+                        <a asp-controller="Patient" asp-action="Index"       class="dd-item">📅 Lịch khám của tôi</a>
+                        <a asp-controller="Patient" asp-action="Results"     class="dd-item">🧪 Kết quả xét nghiệm</a>
+                        <a asp-controller="Patient" asp-action="Profile"     class="dd-item">👤 Hồ sơ cá nhân</a>
+                    }
+                    @if (userRole == "Doctor")
+                    {
+                        <a asp-controller="Doctor"  asp-action="Dashboard"   class="dd-item">🩺 Dashboard bác sĩ</a>
+                        <a asp-controller="Doctor"  asp-action="Schedule"    class="dd-item">📅 Lịch khám hôm nay</a>
+                        <a asp-controller="Doctor"  asp-action="Patients"    class="dd-item">👥 Danh sách bệnh nhân</a>
+                    }
+                    @if (userRole == "Staff")
+                    {
+                        <a asp-controller="Staff"   asp-action="Dashboard"   class="dd-item">🖥️ Dashboard nhân viên</a>
+                        <a asp-controller="Staff"   asp-action="Appointments"class="dd-item">📋 Quản lý lịch đặt khám</a>
+                    }
+                    @if (userRole == "Admin")
+                    {
+                        <a asp-controller="Admin"   asp-action="Dashboard"   class="dd-item">⚙️ Dashboard quản trị</a>
+                        <a asp-controller="Admin"   asp-action="Users"       class="dd-item">👥 Quản lý người dùng</a>
+                        <a asp-controller="Admin"   asp-action="Reports"     class="dd-item">📊 Báo cáo thống kê</a>
+                    }
+                    <div class="dd-divider"></div>
+                    <a asp-controller="Account" asp-action="Logout"          class="dd-item dd-logout">🚪 Đăng xuất</a>
+                </div>
+            </div>
+        }
+    </div>
+</nav>
+
+<!-- ===== THÔNG BÁO TOÀN CỤC (TempData) ===== -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success" id="globalAlert">
+        @TempData["SuccessMessage"]
+        <button onclick="document.getElementById('globalAlert').remove()">✕</button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-error" id="globalAlertErr">
+        @TempData["ErrorMessage"]
+        <button onclick="document.getElementById('globalAlertErr').remove()">✕</button>
+    </div>
+}
+
+<!-- ===== NỘI DUNG TRANG ===== -->
+<main>
+    @RenderBody()
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+    <div class="footer-grid">
+        <div>
+            <div class="footer-brand">Phòng Khám <span>Tai Mũi Họng</span></div>
+            <div class="footer-desc">Chuyên khoa Tai Mũi Họng hàng đầu với đội ngũ bác sĩ chuyên sâu và hệ thống nội soi thế hệ mới.</div>
+            <div class="footer-contact">
+                <div><strong>Địa chỉ:</strong> 123 Đường Y Tế, Q.1, TP.HCM</div>
+                <div><strong>Hotline:</strong> 1800 5678</div>
+                <div><strong>Email:</strong> contact@pktatmuihong.vn</div>
+            </div>
+        </div>
+        <div>
+            <div class="footer-heading">Dịch vụ TMH</div>
+            <a href="#" class="footer-link">Nội soi Tai Mũi Họng</a>
+            <a href="#" class="footer-link">Đo thính lực</a>
+            <a href="#" class="footer-link">Điều trị viêm xoang</a>
+            <a href="#" class="footer-link">Phẫu thuật Amidan</a>
+            <a href="#" class="footer-link">TMH Nhi khoa</a>
+        </div>
+        <div>
+            <div class="footer-heading">Bệnh nhân</div>
+            @if (!isLoggedIn)
+            {
+                <a asp-controller="Account"  asp-action="Register" class="footer-link">Đăng ký tài khoản</a>
+                <a asp-controller="Account"  asp-action="Login"    class="footer-link">Đặt lịch khám</a>
+            }
+            else
+            {
+                <a asp-controller="Patient"  asp-action="Book"     class="footer-link">Đặt lịch khám</a>
+                <a asp-controller="Patient"  asp-action="Results"  class="footer-link">Tra cứu kết quả</a>
+                <a asp-controller="Patient"  asp-action="Profile"  class="footer-link">Hồ sơ bệnh án</a>
+            }
+        </div>
+        <div>
+            <div class="footer-heading">Hỗ trợ</div>
+            <a href="#" class="footer-link">Câu hỏi thường gặp</a>
+            <a asp-controller="Home" asp-action="HuongDan" class="footer-link">Hướng dẫn khám</a>
+            <a href="#" class="footer-link">Chính sách bảo mật</a>
+            <a asp-controller="Home" asp-action="Contact"  class="footer-link">Liên hệ hỗ trợ</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 Phòng Khám Tai Mũi Họng. Bảo lưu mọi quyền.</span>
+        <span>Hệ thống ASP.NET Core MVC ✦</span>
+    </div>
+</footer>
+
+<script>
+// Toggle dropdown menu người dùng
+function toggleDropdown() {
+    document.getElementById('dropdownMenu').classList.toggle('open');
+}
+// Nhấn ngoài dropdown thì đóng lại
+document.addEventListener('click', function(e) {
+    var dd = document.getElementById('userDropdown');
+    if (dd && !dd.contains(e.target))
+        document.getElementById('dropdownMenu')?.classList.remove('open');
+});
+// Tự ẩn thông báo sau 4 giây
+setTimeout(function() {
+    document.getElementById('globalAlert')?.remove();
+    document.getElementById('globalAlertErr')?.remove();
+}, 4000);
+</script>
+
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
