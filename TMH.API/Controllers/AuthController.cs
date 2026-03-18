@@ -137,5 +137,12 @@ namespace TMH.API.Controllers
         {
             return Ok(new { message = "Cổng bệnh nhân — xem lịch khám và kết quả của bạn." });
         }
+        [HttpGet("genhash")]
+        [AllowAnonymous]
+        public IActionResult GenHash()
+        {
+            string hash = BCrypt.Net.BCrypt.HashPassword("TMH@123456", workFactor: 12);
+            return Ok(new { hash });
+        }
     }
 }

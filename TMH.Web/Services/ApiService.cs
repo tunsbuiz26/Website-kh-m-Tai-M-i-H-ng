@@ -16,7 +16,7 @@ namespace TMH.Web.Services
     /// </summary>
     public class ApiService
     {
-        private readonly HttpClient   _http;
+        private readonly HttpClient _http;
         private readonly IHttpContextAccessor _ctx;
 
         // JsonSerializerOptions tái sử dụng để tiết kiệm memory và đảm nhất quán
@@ -28,7 +28,7 @@ namespace TMH.Web.Services
         public ApiService(HttpClient http, IHttpContextAccessor ctx)
         {
             _http = http;
-            _ctx  = ctx;
+            _ctx = ctx;
         }
 
         // =====================================================================
@@ -51,7 +51,7 @@ namespace TMH.Web.Services
             // Đính token vào header nếu người dùng đã đăng nhập
             AttachToken();
 
-            var json    = JsonSerializer.Serialize(body);
+            var json = JsonSerializer.Serialize(body);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             HttpResponseMessage response;
@@ -102,5 +102,7 @@ namespace TMH.Web.Services
             else
                 _http.DefaultRequestHeaders.Authorization = null;
         }
+
     }
+
 }

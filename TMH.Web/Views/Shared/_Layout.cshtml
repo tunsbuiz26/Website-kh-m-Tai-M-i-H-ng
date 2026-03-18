@@ -10,7 +10,7 @@
 </head>
 <body>
 
-<!--
+@*
     _Layout.cshtml là "khung" dùng chung cho toàn bộ Web App.
     Mọi trang đều kế thừa layout này. Phần nội dung riêng của từng trang
     được chèn vào @RenderBody().
@@ -18,7 +18,7 @@
     Header thay đổi động theo trạng thái đăng nhập:
       - Chưa đăng nhập: hiển thị nút "Đăng nhập" và "Đăng ký"
       - Đã đăng nhập: hiển thị tên người dùng, role, và dropdown menu
--->
+*@
 
 @{
     // Đọc trạng thái đăng nhập từ Session (được set trong AccountController)
@@ -67,13 +67,13 @@
     <div class="nav-actions">
         @if (!isLoggedIn)
         {
-            <!-- Chưa đăng nhập: hiện nút Đăng nhập & Đăng ký -->
+            @* Chưa đăng nhập: hiện nút Đăng nhập & Đăng ký *@
             <a asp-controller="Account" asp-action="Login" class="btn-outline">Đăng nhập</a>
             <a asp-controller="Account" asp-action="Register" class="btn-solid">Đăng ký</a>
         }
         else
         {
-            <!-- Đã đăng nhập: hiện avatar + dropdown menu -->
+                @* Đã đăng nhập: hiện avatar + dropdown menu *@
             <div class="user-dropdown" id="userDropdown">
                 <div class="user-toggle" onclick="toggleDropdown()">
                     <div class="user-avatar-sm">@initials</div>
