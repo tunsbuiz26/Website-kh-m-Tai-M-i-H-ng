@@ -91,6 +91,7 @@ builder.Services.AddCors(options =>
 // --- Đăng ký các service của ứng dụng vào DI container ---
 // AddScoped = tạo instance mới cho mỗi HTTP request (phù hợp cho service có DbContext)
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AppointmentService>();
 builder.Services.AddScoped<JwtHelper>();
 
 builder.Services.AddControllers();

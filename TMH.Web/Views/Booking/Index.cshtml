@@ -1,0 +1,187 @@
+﻿@model List<TMH.Shared.DTOs.DoctorScheduleDto>
+@{
+    ViewBag.Title = "Đặt lịch khám";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var userInfoJson = Context.Session.GetString("UserInfo");
+}
+<style>
+    .book-wrap{max-width:860px;margin:40px auto;padding:0 20px;}
+    .book-title{font-family:'Crimson Pro',serif;font-size:28px;font-weight:600;color:#0a4d7c;margin-bottom:6px;}
+    .book-sub{font-size:13px;color:#7a9bb0;margin-bottom:28px;}
+    .step-bar{display:flex;gap:0;margin-bottom:28px;}
+    .step-item{flex:1;text-align:center;padding:10px;font-size:12px;font-weight:500;color:#7a9bb0;border-bottom:2px solid #d4e8f5;position:relative;}
+    .step-item.active{color:#0a4d7c;border-color:#0a4d7c;}
+    .step-item.done{color:#2d7a52;border-color:#2d7a52;}
+    .doctor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+    .doc-card{border:1.5px solid #d4e8f5;border-radius:12px;padding:16px;cursor:pointer;transition:border-color .15s,background .15s;}
+    .doc-card:hover{border-color:#1a6fa8;background:#f0f8ff;}
+    .doc-card.selected{border-color:#0a4d7c;background:#e8f4fd;}
+    .doc-avatar{width:48px;height:48px;border-radius:50%;background:#0a4d7c;color:#fff;font-family:'Crimson Pro',serif;font-size:18px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+    .doc-name{font-size:13px;font-weight:500;color:#0a4d7c;margin-bottom:3px;}
+    .doc-spec{font-size:11px;color:#c9a227;font-weight:500;margin-bottom:6px;}
+    .doc-slots{font-size:11px;color:#7a9bb0;}
+    .slot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:24px;}
+    .slot-btn{border:1px solid #d4e8f5;border-radius:8px;padding:8px 6px;font-size:12px;font-weight:500;color:#3a5a72;cursor:pointer;text-align:center;background:#fff;transition:all .15s;font-family:'DM Sans',sans-serif;}
+    .slot-btn:hover{border-color:#1a6fa8;background:#f0f8ff;color:#0a4d7c;}
+    .slot-btn.selected{border-color:#0a4d7c;background:#0a4d7c;color:#fff;}
+    .slot-btn.full{border-color:#f0e8e8;background:#fafafa;color:#c9b0b0;cursor:not-allowed;}
+    .form-section{background:#fff;border:1px solid #d4e8f5;border-radius:14px;padding:24px;margin-bottom:20px;}
+    .form-section-title{font-size:14px;font-weight:500;color:#0a4d7c;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #d4e8f5;}
+    .form-label{font-size:11px;font-weight:500;color:#3a5a72;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;display:block;}
+    .form-control{width:100%;height:40px;border:1px solid #d4e8f5;border-radius:9px;padding:0 12px;font-size:13px;color:#0d2d44;background:#fff;outline:none;font-family:'DM Sans',sans-serif;margin-bottom:14px;}
+    .form-control:focus{border-color:#1a6fa8;box-shadow:0 0 0 3px rgba(26,111,168,0.09);}
+    .form-textarea{width:100%;height:80px;border:1px solid #d4e8f5;border-radius:9px;padding:10px 12px;font-size:13px;color:#0d2d44;background:#fff;outline:none;font-family:'DM Sans',sans-serif;resize:none;}
+    .form-textarea:focus{border-color:#1a6fa8;box-shadow:0 0 0 3px rgba(26,111,168,0.09);}
+    .summary-box{background:#f0f8ff;border:1px solid #d4e8f5;border-radius:10px;padding:16px;margin-bottom:20px;display:none;}
+    .summary-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
+    .summary-row .lbl{color:#7a9bb0;}
+    .summary-row .val{font-weight:500;color:#0a4d7c;}
+    .btn-submit{width:100%;height:44px;background:#0a4d7c;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;}
+    .btn-submit:hover{background:#1a6fa8;}
+    .btn-submit:disabled{background:#9bb5c8;cursor:not-allowed;}
+    .no-slots{text-align:center;padding:20px;color:#7a9bb0;font-size:13px;}
+</style>
+
+<div class="book-wrap">
+    <div class="book-title">Đặt lịch khám Tai Mũi Họng</div>
+    <div class="book-sub">Chọn bác sĩ, khung giờ và điền thông tin để hoàn tất đặt lịch</div>
+
+    <div class="step-bar">
+        <div class="step-item active" id="step1-bar">1. Chọn bác sĩ</div>
+        <div class="step-item" id="step2-bar">2. Chọn khung giờ</div>
+        <div class="step-item" id="step3-bar">3. Xác nhận</div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="no-slots">Hiện chưa có lịch làm việc nào. Vui lòng quay lại sau.</div>
+    }
+    else
+    {
+        <form asp-action="Book" asp-controller="Booking" method="post" id="bookForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="patientId" id="hPatientId" value="" />
+            <input type="hidden" name="scheduleId" id="hScheduleId" value="" />
+
+            <!-- Bước 1: Chọn bác sĩ -->
+            <div class="form-section" id="sec1">
+                <div class="form-section-title">Chọn bác sĩ</div>
+                <div class="doctor-grid">
+                    @foreach (var doc in Model)
+                    {
+                        var initials = string.Join("", doc.FullName.Split(' ').TakeLast(2).Select(w => w[0]));
+                        <div class="doc-card" onclick="selectDoctor(@doc.DoctorId, '@doc.FullName', '@doc.Specialty', this)"
+                             data-docid="@doc.DoctorId">
+                            <div class="doc-avatar">@initials</div>
+                            <div class="doc-name">@doc.FullName</div>
+                            <div class="doc-spec">@doc.Specialty</div>
+                            <div class="doc-slots">@doc.AvailableSlots.Count khung giờ còn trống</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Bước 2: Chọn khung giờ (ẩn ban đầu) -->
+            <div class="form-section" id="sec2" style="display:none">
+                <div class="form-section-title">Chọn khung giờ — <span id="selDoctorName" style="color:#c9a227"></span></div>
+                <div class="slot-grid" id="slotGrid"></div>
+            </div>
+
+            <!-- Bước 3: Hồ sơ + ghi chú (ẩn ban đầu) -->
+            <div class="form-section" id="sec3" style="display:none">
+                <div class="form-section-title">Thông tin bổ sung</div>
+                <label class="form-label">Hồ sơ khám bệnh</label>
+                <select class="form-control" id="selPatient"
+                        onchange="document.getElementById('hPatientId').value=this.value">
+                    <option value="">-- Chọn hồ sơ --</option>
+                    @* TODO: Load từ API danh sách hồ sơ của user đang đăng nhập *@
+                    <option value="1">Hồ sơ của tôi</option>
+                </select>
+                <label class="form-label">Ghi chú cho bác sĩ (tuỳ chọn)</label>
+                <textarea class="form-textarea" name="note"
+                      placeholder="Mô tả triệu chứng, tiền sử bệnh liên quan..."></textarea>
+            </div>
+
+            <!-- Tóm tắt -->
+            <div class="summary-box" id="summaryBox">
+                <div class="form-section-title" style="border:none;padding:0;margin-bottom:12px">Tóm tắt lịch khám</div>
+                <div class="summary-row"><span class="lbl">Bác sĩ</span><span class="val" id="sumDoctor"></span></div>
+                <div class="summary-row"><span class="lbl">Chuyên khoa</span><span class="val" id="sumSpec"></span></div>
+                <div class="summary-row"><span class="lbl">Ngày khám</span><span class="val" id="sumDate"></span></div>
+                <div class="summary-row"><span class="lbl">Khung giờ</span><span class="val" id="sumTime"></span></div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit" disabled
+                    onclick="return validateForm()">
+                Xác nhận đặt lịch →
+            </button>
+        </form>
+    }
+</div>
+
+@* Dữ liệu slots từ server — truyền xuống JS *@
+<script>
+    var doctorData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model));
+    var selectedDoctor = null;
+    var selectedSlot   = null;
+
+    function selectDoctor(docId, name, spec, el) {
+        document.querySelectorAll('.doc-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedDoctor = doctorData.find(d => d.doctorId === docId);
+        document.getElementById('selDoctorName').textContent = name;
+
+        // Render slots
+        var grid = document.getElementById('slotGrid');
+        grid.innerHTML = '';
+        if (!selectedDoctor || !selectedDoctor.availableSlots.length) {
+            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1">Không có khung giờ trống</p>';
+        } else {
+            selectedDoctor.availableSlots.forEach(function(s) {
+                var btn = document.createElement('div');
+                btn.className = 'slot-btn';
+                var d = new Date(s.workDate);
+                btn.innerHTML = '<div style="font-weight:500">' + d.toLocaleDateString('vi-VN') + '</div>' +
+                                '<div>' + s.startTime + ' – ' + s.endTime + '</div>' +
+                                '<div style="color:#c9a227;font-size:10px">Còn ' + s.remainingSlots + ' chỗ</div>';
+                btn.onclick = function() { selectSlot(s, name, spec, btn); };
+                grid.appendChild(btn);
+            });
+        }
+
+        document.getElementById('sec2').style.display = 'block';
+        document.getElementById('step2-bar').classList.add('active');
+        checkReady();
+    }
+
+    function selectSlot(slot, docName, spec, el) {
+        document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedSlot = slot;
+        document.getElementById('hScheduleId').value = slot.scheduleId;
+
+        // Hiện sec3 và summary
+        document.getElementById('sec3').style.display = 'block';
+        document.getElementById('step3-bar').classList.add('active');
+
+        var d = new Date(slot.workDate);
+        document.getElementById('sumDoctor').textContent = docName;
+        document.getElementById('sumSpec').textContent   = spec;
+        document.getElementById('sumDate').textContent   = d.toLocaleDateString('vi-VN', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+        document.getElementById('sumTime').textContent   = slot.startTime + ' – ' + slot.endTime;
+        document.getElementById('summaryBox').style.display = 'block';
+        checkReady();
+    }
+
+    function checkReady() {
+        var ok = selectedDoctor && selectedSlot;
+        document.getElementById('btnSubmit').disabled = !ok;
+    }
+
+    function validateForm() {
+        var pid = document.getElementById('hPatientId').value;
+        if (!pid) { alert('Vui lòng chọn hồ sơ bệnh nhân'); return false; }
+        if (!document.getElementById('hScheduleId').value) { alert('Vui lòng chọn khung giờ'); return false; }
+        return true;
+    }
+</script>

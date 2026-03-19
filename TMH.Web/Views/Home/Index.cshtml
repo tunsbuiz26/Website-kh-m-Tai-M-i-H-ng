@@ -102,7 +102,7 @@
     <div class="hero-btns">
       @if (ViewBag.IsLoggedIn == true)
       {
-          <a asp-controller="Patient" asp-action="Book" class="btn-hero-primary">Đặt lịch khám ngay</a>
+          <a asp-controller="Booking" asp-action="Index" class="btn-hero-primary">Đặt lịch khám ngay</a>
       }
       else
       {
@@ -173,7 +173,7 @@
       </div>
       @if (ViewBag.IsLoggedIn == true)
       {
-          <a asp-controller="Patient" asp-action="Book" class="btn-appt" style="display:flex;align-items:center;justify-content:center;text-decoration:none;">Xác nhận đặt lịch</a>
+          <a asp-controller="Booking" asp-action="Index" class="btn-appt" style="display:flex;align-items:center;justify-content:center;text-decoration:none;">Xác nhận đặt lịch</a>
       }
       else
       {
