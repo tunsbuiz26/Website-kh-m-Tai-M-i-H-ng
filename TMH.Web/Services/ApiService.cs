@@ -102,7 +102,27 @@ namespace TMH.Web.Services
             else
                 _http.DefaultRequestHeaders.Authorization = null;
         }
+        // =====================================================================
+        // APPOINTMENT
+        // =====================================================================
+        public async Task<List<DoctorScheduleDto>?> GetAvailableDoctorsAsync(DateTime? date = null)
+        {
+            var url = date.HasValue
+                ? $"api/appointment/available-doctors?date={date.Value:yyyy-MM-dd}"
+                : "api/appointment/available-doctors";
+            return await GetAsync<List<DoctorScheduleDto>>(url);
+        }
+
+        public async Task<AppointmentResponseDto?> BookAppointmentAsync(BookAppointmentDto dto)
+            => await PostAsync<AppointmentResponseDto>("api/appointment/book", dto);
+
+        public async Task<List<AppointmentDetailDto>?> GetMyAppointmentsAsync()
+            => await GetAsync<List<AppointmentDetailDto>>("api/appointment/my-appointments");
+
+        public async Task<AppointmentResponseDto?> CancelAppointmentAsync(int id)
+            => await PostAsync<AppointmentResponseDto>($"api/appointment/cancel/{id}", new { });
 
     }
+
 
 }
