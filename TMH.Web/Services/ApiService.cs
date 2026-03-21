@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -111,6 +112,33 @@ namespace TMH.Web.Services
                 ? $"api/appointment/available-doctors?date={date.Value:yyyy-MM-dd}"
                 : "api/appointment/available-doctors";
             return await GetAsync<List<DoctorScheduleDto>>(url);
+        }
+        // Gọi API tạo URL thanh toán VNPay
+        public async Task<string?> CreateVnPayUrlAsync(VnPaymentRequestDto dto)
+        {
+            // Dùng _ctx thay vì _httpContextAccessor
+            var token = _ctx.HttpContext?.Session.GetString("JwtToken");
+            if (token == null) return null;
+
+            // Dùng _http thay vì _httpClient
+            _http.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _http.PostAsJsonAsync("api/payment/create-payment-url", dto);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            return result.GetProperty("url").GetString();
+        }
+
+        // Xử lý kết quả trả về từ VNPay
+        public async Task<VnPaymentResponseDto?> GetPaymentResultAsync(string queryString)
+        {
+            // Dùng _http thay vì _httpClient
+            var response = await _http.GetAsync($"api/payment/payment-return{queryString}");
+            if (!response.IsSuccessStatusCode) return null;
+
+            return await response.Content.ReadFromJsonAsync<VnPaymentResponseDto>();
         }
 
         public async Task<AppointmentResponseDto?> BookAppointmentAsync(BookAppointmentDto dto)

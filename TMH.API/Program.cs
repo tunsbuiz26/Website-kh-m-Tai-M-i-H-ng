@@ -93,6 +93,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AppointmentService>();
 builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddScoped<VnPayService>();
 
 builder.Services.AddControllers();
 
