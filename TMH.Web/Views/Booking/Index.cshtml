@@ -5,41 +5,318 @@
     var userInfoJson = Context.Session.GetString("UserInfo");
 }
 <style>
-    .book-wrap{max-width:860px;margin:40px auto;padding:0 20px;}
-    .book-title{font-family:'Crimson Pro',serif;font-size:28px;font-weight:600;color:#0a4d7c;margin-bottom:6px;}
-    .book-sub{font-size:13px;color:#7a9bb0;margin-bottom:28px;}
-    .step-bar{display:flex;gap:0;margin-bottom:28px;}
-    .step-item{flex:1;text-align:center;padding:10px;font-size:12px;font-weight:500;color:#7a9bb0;border-bottom:2px solid #d4e8f5;position:relative;}
-    .step-item.active{color:#0a4d7c;border-color:#0a4d7c;}
-    .step-item.done{color:#2d7a52;border-color:#2d7a52;}
-    .doctor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
-    .doc-card{border:1.5px solid #d4e8f5;border-radius:12px;padding:16px;cursor:pointer;transition:border-color .15s,background .15s;}
-    .doc-card:hover{border-color:#1a6fa8;background:#f0f8ff;}
-    .doc-card.selected{border-color:#0a4d7c;background:#e8f4fd;}
-    .doc-avatar{width:48px;height:48px;border-radius:50%;background:#0a4d7c;color:#fff;font-family:'Crimson Pro',serif;font-size:18px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
-    .doc-name{font-size:13px;font-weight:500;color:#0a4d7c;margin-bottom:3px;}
-    .doc-spec{font-size:11px;color:#c9a227;font-weight:500;margin-bottom:6px;}
-    .doc-slots{font-size:11px;color:#7a9bb0;}
-    .slot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:24px;}
-    .slot-btn{border:1px solid #d4e8f5;border-radius:8px;padding:8px 6px;font-size:12px;font-weight:500;color:#3a5a72;cursor:pointer;text-align:center;background:#fff;transition:all .15s;font-family:'DM Sans',sans-serif;}
-    .slot-btn:hover{border-color:#1a6fa8;background:#f0f8ff;color:#0a4d7c;}
-    .slot-btn.selected{border-color:#0a4d7c;background:#0a4d7c;color:#fff;}
-    .slot-btn.full{border-color:#f0e8e8;background:#fafafa;color:#c9b0b0;cursor:not-allowed;}
-    .form-section{background:#fff;border:1px solid #d4e8f5;border-radius:14px;padding:24px;margin-bottom:20px;}
-    .form-section-title{font-size:14px;font-weight:500;color:#0a4d7c;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #d4e8f5;}
-    .form-label{font-size:11px;font-weight:500;color:#3a5a72;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;display:block;}
-    .form-control{width:100%;height:40px;border:1px solid #d4e8f5;border-radius:9px;padding:0 12px;font-size:13px;color:#0d2d44;background:#fff;outline:none;font-family:'DM Sans',sans-serif;margin-bottom:14px;}
-    .form-control:focus{border-color:#1a6fa8;box-shadow:0 0 0 3px rgba(26,111,168,0.09);}
-    .form-textarea{width:100%;height:80px;border:1px solid #d4e8f5;border-radius:9px;padding:10px 12px;font-size:13px;color:#0d2d44;background:#fff;outline:none;font-family:'DM Sans',sans-serif;resize:none;}
-    .form-textarea:focus{border-color:#1a6fa8;box-shadow:0 0 0 3px rgba(26,111,168,0.09);}
-    .summary-box{background:#f0f8ff;border:1px solid #d4e8f5;border-radius:10px;padding:16px;margin-bottom:20px;display:none;}
-    .summary-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
-    .summary-row .lbl{color:#7a9bb0;}
-    .summary-row .val{font-weight:500;color:#0a4d7c;}
-    .btn-submit{width:100%;height:44px;background:#0a4d7c;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;}
-    .btn-submit:hover{background:#1a6fa8;}
-    .btn-submit:disabled{background:#9bb5c8;cursor:not-allowed;}
-    .no-slots{text-align:center;padding:20px;color:#7a9bb0;font-size:13px;}
+    .book-wrap {
+        max-width: 860px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .book-title {
+        font-family: 'Crimson Pro',serif;
+        font-size: 28px;
+        font-weight: 600;
+        color: #0a4d7c;
+        margin-bottom: 6px;
+    }
+
+    .book-sub {
+        font-size: 13px;
+        color: #7a9bb0;
+        margin-bottom: 28px;
+    }
+
+    .step-bar {
+        display: flex;
+        gap: 0;
+        margin-bottom: 28px;
+    }
+
+    .step-item {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #7a9bb0;
+        border-bottom: 2px solid #d4e8f5;
+        position: relative;
+    }
+
+        .step-item.active {
+            color: #0a4d7c;
+            border-color: #0a4d7c;
+        }
+
+        .step-item.done {
+            color: #2d7a52;
+            border-color: #2d7a52;
+        }
+
+    .doctor-grid {
+        display: grid;
+        grid-template-columns: repeat(3,1fr);
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+
+    .doc-card {
+        border: 1.5px solid #d4e8f5;
+        border-radius: 12px;
+        padding: 16px;
+        cursor: pointer;
+        transition: border-color .15s,background .15s;
+    }
+
+        .doc-card:hover {
+            border-color: #1a6fa8;
+            background: #f0f8ff;
+        }
+
+        .doc-card.selected {
+            border-color: #0a4d7c;
+            background: #e8f4fd;
+        }
+
+    .doc-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #0a4d7c;
+        color: #fff;
+        font-family: 'Crimson Pro',serif;
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    .doc-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: #0a4d7c;
+        margin-bottom: 3px;
+    }
+
+    .doc-spec {
+        font-size: 11px;
+        color: #c9a227;
+        font-weight: 500;
+        margin-bottom: 6px;
+    }
+
+    .doc-slots {
+        font-size: 11px;
+        color: #7a9bb0;
+    }
+
+    .slot-grid {
+        display: grid;
+        grid-template-columns: repeat(4,1fr);
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+
+    .slot-btn {
+        border: 1px solid #d4e8f5;
+        border-radius: 8px;
+        padding: 8px 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #3a5a72;
+        cursor: pointer;
+        text-align: center;
+        background: #fff;
+        transition: all .15s;
+        font-family: 'DM Sans',sans-serif;
+    }
+
+        .slot-btn:hover {
+            border-color: #1a6fa8;
+            background: #f0f8ff;
+            color: #0a4d7c;
+        }
+
+        .slot-btn.selected {
+            border-color: #0a4d7c;
+            background: #0a4d7c;
+            color: #fff;
+        }
+
+        .slot-btn.full {
+            border-color: #f0e8e8;
+            background: #fafafa;
+            color: #c9b0b0;
+            cursor: not-allowed;
+        }
+
+    .form-section {
+        background: #fff;
+        border: 1px solid #d4e8f5;
+        border-radius: 14px;
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+
+    .form-section-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #0a4d7c;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #d4e8f5;
+    }
+
+    .form-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #3a5a72;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .form-control {
+        width: 100%;
+        height: 40px;
+        border: 1px solid #d4e8f5;
+        border-radius: 9px;
+        padding: 0 12px;
+        font-size: 13px;
+        color: #0d2d44;
+        background: #fff;
+        outline: none;
+        font-family: 'DM Sans',sans-serif;
+        margin-bottom: 14px;
+    }
+
+        .form-control:focus {
+            border-color: #1a6fa8;
+            box-shadow: 0 0 0 3px rgba(26,111,168,0.09);
+        }
+
+    .form-textarea {
+        width: 100%;
+        height: 80px;
+        border: 1px solid #d4e8f5;
+        border-radius: 9px;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: #0d2d44;
+        background: #fff;
+        outline: none;
+        font-family: 'DM Sans',sans-serif;
+        resize: none;
+    }
+
+        .form-textarea:focus {
+            border-color: #1a6fa8;
+            box-shadow: 0 0 0 3px rgba(26,111,168,0.09);
+        }
+
+    .summary-box {
+        background: #f0f8ff;
+        border: 1px solid #d4e8f5;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+        display: none;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        padding: 4px 0;
+    }
+
+        .summary-row .lbl {
+            color: #7a9bb0;
+        }
+
+        .summary-row .val {
+            font-weight: 500;
+            color: #0a4d7c;
+        }
+
+    .btn-submit {
+        width: 100%;
+        height: 44px;
+        background: #0a4d7c;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: 'DM Sans',sans-serif;
+        transition: background .15s;
+    }
+
+        .btn-submit:hover {
+            background: #1a6fa8;
+        }
+
+        .btn-submit:disabled {
+            background: #9bb5c8;
+            cursor: not-allowed;
+        }
+
+    .no-slots {
+        text-align: center;
+        padding: 20px;
+        color: #7a9bb0;
+        font-size: 13px;
+    }
+    /* ── VNPay button ── */
+    .btn-group-payment {
+        display: flex;
+        gap: 12px;
+        margin-top: 0;
+    }
+
+    .btn-vnpay {
+        flex: 1;
+        height: 44px;
+        background: #fff;
+        color: #e0292a;
+        border: 2px solid #e0292a;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'DM Sans',sans-serif;
+        transition: all .15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+        .btn-vnpay:hover {
+            background: #e0292a;
+            color: #fff;
+        }
+
+        .btn-vnpay:disabled {
+            border-color: #d4b0b0;
+            color: #d4b0b0;
+            cursor: not-allowed;
+            background: #fff;
+        }
+
+        .btn-vnpay img {
+            height: 20px;
+        }
+
+    .payment-note {
+        font-size: 11px;
+        color: #7a9bb0;
+        text-align: center;
+        margin-top: 10px;
+    }
 </style>
 
 <div class="book-wrap">
@@ -51,6 +328,19 @@
         <div class="step-item" id="step2-bar">2. Chọn khung giờ</div>
         <div class="step-item" id="step3-bar">3. Xác nhận</div>
     </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:14px 18px;margin-bottom:18px;color:#2d7a52;font-size:13px;">
+            ✅ @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div style="background:#fdecea;border:1px solid #f5c6c6;border-radius:10px;padding:14px 18px;margin-bottom:18px;color:#c0392b;font-size:13px;">
+            ❌ @TempData["ErrorMessage"]
+        </div>
+    }
 
     @if (!Model.Any())
     {
@@ -109,12 +399,34 @@
                 <div class="summary-row"><span class="lbl">Chuyên khoa</span><span class="val" id="sumSpec"></span></div>
                 <div class="summary-row"><span class="lbl">Ngày khám</span><span class="val" id="sumDate"></span></div>
                 <div class="summary-row"><span class="lbl">Khung giờ</span><span class="val" id="sumTime"></span></div>
+                <div class="summary-row">
+                    <span class="lbl">Phí khám</span>
+                    <span class="val" style="color:#e0292a">100.000 VNĐ</span>
+                </div>
             </div>
 
-            <button type="submit" class="btn-submit" id="btnSubmit" disabled
-                    onclick="return validateForm()">
-                Xác nhận đặt lịch →
-            </button>
+            <!-- Nút hành động: Đặt lịch + Thanh toán VNPay -->
+            <div class="btn-group-payment">
+                <button type="submit" class="btn-submit" id="btnSubmit" disabled
+                        onclick="return validateForm()" style="flex:1">
+                    Xác nhận đặt lịch →
+                </button>
+                <button type="button" class="btn-vnpay" id="btnVnPay" disabled
+                        onclick="return payWithVnPay()">
+                    <img src="https://sandbox.vnpayment.vn/paymentv2/Assets/Images/logoVnpay.png"
+                         alt="VNPay" onerror="this.style.display='none'" />
+                    Thanh toán VNPay
+                </button>
+            </div>
+            <p class="payment-note">💡 Chọn <strong>Xác nhận đặt lịch</strong> để đặt trước, hoặc <strong>Thanh toán VNPay</strong> để đặt lịch và thanh toán ngay</p>
+
+        </form>
+
+        <!-- Form phụ gửi sang PaymentController (tách riêng để tránh conflict) -->
+        <form id="vnpayForm" asp-action="Pay" asp-controller="Payment" method="post" style="display:none">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="appointmentId" id="vAppointmentId" value="0" />
+            <input type="hidden" name="amount" value="100000" />
         </form>
     }
 </div>
@@ -176,6 +488,7 @@
     function checkReady() {
         var ok = selectedDoctor && selectedSlot;
         document.getElementById('btnSubmit').disabled = !ok;
+        document.getElementById('btnVnPay').disabled  = !ok;
     }
 
     function validateForm() {
@@ -183,5 +496,43 @@
         if (!pid) { alert('Vui lòng chọn hồ sơ bệnh nhân'); return false; }
         if (!document.getElementById('hScheduleId').value) { alert('Vui lòng chọn khung giờ'); return false; }
         return true;
+    }
+
+    // Xử lý nút Thanh toán VNPay
+    // Luồng: đặt lịch trước (Book API) → lấy appointmentId → submit form vnpay
+    function payWithVnPay() {
+        var pid = document.getElementById('hPatientId').value;
+        if (!pid) { alert('Vui lòng chọn hồ sơ bệnh nhân'); return false; }
+        if (!document.getElementById('hScheduleId').value) { alert('Vui lòng chọn khung giờ'); return false; }
+
+        // Đặt lịch trước qua API, sau đó redirect sang VNPay
+        var scheduleId = document.getElementById('hScheduleId').value;
+        var note = document.querySelector('textarea[name="note"]').value;
+
+        fetch('/Booking/BookAndPay', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            },
+            body: JSON.stringify({
+                patientId: parseInt(pid),
+                scheduleId: parseInt(scheduleId),
+                note: note
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.appointmentId) {
+                // Gán appointmentId rồi submit form VNPay
+                document.getElementById('vAppointmentId').value = data.appointmentId;
+                document.getElementById('vnpayForm').submit();
+            } else {
+                alert(data.message || 'Không thể đặt lịch. Vui lòng thử lại.');
+            }
+        })
+        .catch(() => alert('Có lỗi xảy ra. Vui lòng thử lại.'));
+
+        return false;
     }
 </script>

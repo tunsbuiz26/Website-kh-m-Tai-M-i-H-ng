@@ -2,6 +2,7 @@
 using System.Text.Json;
 using TMH.Shared.DTOs;
 using TMH.Web.Services;
+
 namespace TMH.Web.Controllers
 {
     public class BookingController : Controller
@@ -26,7 +27,7 @@ namespace TMH.Web.Controllers
             return View(doctors ?? new List<DoctorScheduleDto>());
         }
 
-        // POST /Booking/Book — xử lý form đặt lịch
+        // POST /Booking/Book — xử lý form đặt lịch thông thường
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Book(int patientId, int scheduleId, string? note)
@@ -57,6 +58,42 @@ namespace TMH.Web.Controllers
 
             TempData["SuccessMessage"] = result.Message;
             return RedirectToAction("MyAppointments");
+        }
+
+        // POST /Booking/BookAndPay — đặt lịch rồi trả appointmentId về cho JS
+        // JS sẽ dùng appointmentId này để submit form thanh toán VNPay
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BookAndPay([FromBody] BookAppointmentDto dto)
+        {
+            // Kiểm tra đăng nhập
+            if (HttpContext.Session.GetString("JwtToken") == null)
+                return Json(new { success = false, message = "Vui lòng đăng nhập lại." });
+
+            // Kiểm tra dữ liệu đầu vào
+            if (dto.PatientId <= 0)
+                return Json(new { success = false, message = "Vui lòng chọn hồ sơ bệnh nhân." });
+
+            if (dto.ScheduleId <= 0)
+                return Json(new { success = false, message = "Vui lòng chọn khung giờ." });
+
+            // Gọi API đặt lịch
+            var result = await _api.BookAppointmentAsync(dto);
+
+            if (result == null)
+                return Json(new { success = false, message = "Không kết nối được đến máy chủ." });
+
+            if (!result.Success)
+                return Json(new { success = false, message = result.Message });
+
+            // Đặt lịch thành công → trả appointmentId về cho JS
+            var appointmentId = result.Data?.Id ?? 0;
+            return Json(new
+            {
+                success = true,
+                appointmentId = appointmentId,
+                message = result.Message
+            });
         }
 
         // GET /Booking/MyAppointments — danh sách lịch khám của bệnh nhân

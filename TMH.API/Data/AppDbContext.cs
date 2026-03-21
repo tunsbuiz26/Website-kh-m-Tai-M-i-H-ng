@@ -14,6 +14,7 @@ namespace TMH.API.Data
         public DbSet<WorkSchedule> WorkSchedules { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Payment> Payments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -122,6 +123,45 @@ namespace TMH.API.Data
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // ── PAYMENTS ───────────────────────────────────────
+            modelBuilder.Entity<Payment>(e =>
+            {
+                e.ToTable("Payments");
+                e.HasKey(p => p.Id);
+
+                e.Property(p => p.Amount).IsRequired();
+                e.Property(p => p.Method).HasMaxLength(20).IsRequired();
+                e.Property(p => p.Status).HasConversion<int>().IsRequired();
+
+                e.Property(p => p.OrderRef).HasMaxLength(50);
+                e.Property(p => p.TransactionId).HasMaxLength(100);
+                e.Property(p => p.BankCode).HasMaxLength(20);
+                e.Property(p => p.VnpayResponseCode).HasMaxLength(10);
+
+                // RawIpnData có thể dài — không giới hạn maxLength
+                e.Property(p => p.RawIpnData).HasColumnType("nvarchar(max)");
+
+                e.Property(p => p.CreatedAt).IsRequired();
+                e.Property(p => p.ExpiresAt).IsRequired();
+                e.Property(p => p.PaidAt);   // nullable — null khi chưa thanh toán
+
+                // Quan hệ 1-1 với Appointment:
+                // mỗi lịch khám có tối đa 1 giao dịch thanh toán
+                e.HasOne(p => p.Appointment)
+                 .WithOne()
+                 .HasForeignKey<Payment>(p => p.AppointmentId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                // Index trên AppointmentId để lookup nhanh khi IPN callback về
+                e.HasIndex(p => p.AppointmentId).IsUnique();
+
+                // Index trên TransactionId để tra cứu và tránh xử lý trùng IPN
+                e.HasIndex(p => p.TransactionId);
+
+                // Index trên OrderRef để tra cứu khi VNPay trả về returnUrl
+                e.HasIndex(p => p.OrderRef);
+            });
+
             // ══════════════════════════════════════════════════
             // SEED DATA — mật khẩu chung: TMH@123456
             // ══════════════════════════════════════════════════
@@ -155,19 +195,42 @@ namespace TMH.API.Data
             );
 
             modelBuilder.Entity<WorkSchedule>().HasData(
-                new WorkSchedule { Id = 1, DoctorId = 1, WorkDate = new DateTime(2026, 3, 18), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 10, CurrentPatients = 3 },
-                new WorkSchedule { Id = 2, DoctorId = 1, WorkDate = new DateTime(2026, 3, 18), StartTime = new TimeSpan(13, 0, 0), EndTime = new TimeSpan(17, 0, 0), MaxPatients = 10, CurrentPatients = 1 },
-                new WorkSchedule { Id = 3, DoctorId = 2, WorkDate = new DateTime(2026, 3, 18), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 8, CurrentPatients = 2 },
-                new WorkSchedule { Id = 4, DoctorId = 3, WorkDate = new DateTime(2026, 3, 18), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 10, CurrentPatients = 1 },
-                new WorkSchedule { Id = 5, DoctorId = 2, WorkDate = new DateTime(2026, 3, 19), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 8, CurrentPatients = 0 }
+                // ── 23/3 (Thứ 2) ──────────────────────────────────────────────
+                // BS. Nguyễn Thanh Vân — sáng + chiều, còn nhiều slot
+                new WorkSchedule { Id = 1, DoctorId = 1, WorkDate = new DateTime(2026, 3, 23), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 10, CurrentPatients = 1 },
+                new WorkSchedule { Id = 2, DoctorId = 1, WorkDate = new DateTime(2026, 3, 23), StartTime = new TimeSpan(13, 0, 0), EndTime = new TimeSpan(17, 0, 0), MaxPatients = 10, CurrentPatients = 0 },
+                // BS. Trần Minh Linh — sáng, gần đầy (test trường hợp slot còn ít)
+                new WorkSchedule { Id = 3, DoctorId = 2, WorkDate = new DateTime(2026, 3, 23), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 4, CurrentPatients = 3 },
+                // BS. Phạm Thị Hương — sáng
+                new WorkSchedule { Id = 4, DoctorId = 3, WorkDate = new DateTime(2026, 3, 23), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 10, CurrentPatients = 0 },
+
+                // ── 24/3 (Thứ 3) ──────────────────────────────────────────────
+                // BS. Nguyễn Thanh Vân — sáng
+                new WorkSchedule { Id = 5, DoctorId = 1, WorkDate = new DateTime(2026, 3, 24), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 10, CurrentPatients = 0 },
+                // BS. Trần Minh Linh — sáng (test slot đầy: MaxPatients = CurrentPatients)
+                new WorkSchedule { Id = 6, DoctorId = 2, WorkDate = new DateTime(2026, 3, 24), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 4, CurrentPatients = 4 },
+                // BS. Phạm Thị Hương — chiều
+                new WorkSchedule { Id = 7, DoctorId = 3, WorkDate = new DateTime(2026, 3, 24), StartTime = new TimeSpan(13, 0, 0), EndTime = new TimeSpan(17, 0, 0), MaxPatients = 8, CurrentPatients = 1 },
+
+                // ── 25/3 (Thứ 4) ──────────────────────────────────────────────
+                // Cả 3 bác sĩ — để test đặt lịch nhiều ngày
+                new WorkSchedule { Id = 8, DoctorId = 1, WorkDate = new DateTime(2026, 3, 25), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 10, CurrentPatients = 0 },
+                new WorkSchedule { Id = 9, DoctorId = 2, WorkDate = new DateTime(2026, 3, 25), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 6, CurrentPatients = 2 },
+                new WorkSchedule { Id = 10, DoctorId = 3, WorkDate = new DateTime(2026, 3, 25), StartTime = new TimeSpan(7, 0, 0), EndTime = new TimeSpan(11, 0, 0), MaxPatients = 10, CurrentPatients = 0 }
             );
 
             modelBuilder.Entity<Appointment>().HasData(
-                new Appointment { Id = 1, PatientId = 1, DoctorId = 1, ScheduleId = 1, BookingCode = "APT-2026-00001", BookedAt = new DateTime(2026, 3, 15, 9, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.HoanThanh, Note = "Khám viêm xoang mãn tính", Diagnosis = "Viêm xoang hàm hai bên mãn tính" },
-                new Appointment { Id = 2, PatientId = 2, DoctorId = 1, ScheduleId = 1, BookingCode = "APT-2026-00002", BookedAt = new DateTime(2026, 3, 16, 10, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.DaXacNhan, Note = "Tái khám sau điều trị amidan", Diagnosis = null },
-                new Appointment { Id = 3, PatientId = 3, DoctorId = 2, ScheduleId = 3, BookingCode = "APT-2026-00003", BookedAt = new DateTime(2026, 3, 17, 8, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.DaDen, Note = "Nghe kém tai phải", Diagnosis = null },
-                new Appointment { Id = 4, PatientId = 5, DoctorId = 3, ScheduleId = 4, BookingCode = "APT-2026-00004", BookedAt = new DateTime(2026, 3, 17, 14, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.ChoXacNhan, Note = "Trẻ 7 tuổi, viêm tai giữa tái phát", Diagnosis = null },
-                new Appointment { Id = 5, PatientId = 4, DoctorId = 1, ScheduleId = 2, BookingCode = "APT-2026-00005", BookedAt = new DateTime(2026, 3, 18, 7, 30, 0, DateTimeKind.Utc), Status = AppointmentStatus.DaHuy, Note = "Bệnh nhân huỷ do bận việc", Diagnosis = null }
+                // ── Lịch đã hoàn thành (lịch sử — giữ nguyên để test xem hồ sơ) ──
+                new Appointment { Id = 1, PatientId = 1, DoctorId = 1, ScheduleId = 1, BookingCode = "APT-2026-00001", BookedAt = new DateTime(2026, 3, 21, 8, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.HoanThanh, Note = "Khám viêm xoang mãn tính", Diagnosis = "Viêm xoang hàm hai bên mãn tính" },
+                new Appointment { Id = 2, PatientId = 4, DoctorId = 1, ScheduleId = 2, BookingCode = "APT-2026-00002", BookedAt = new DateTime(2026, 3, 21, 9, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.DaHuy, Note = "Bệnh nhân huỷ do bận việc", Diagnosis = null },
+
+                // ── Lịch sắp tới ngày 23/3 — test luồng thanh toán ────────────
+                // Đã xác nhận (đã thanh toán — test case xem lịch đã book)
+                new Appointment { Id = 3, PatientId = 2, DoctorId = 1, ScheduleId = 1, BookingCode = "APT-2026-00003", BookedAt = new DateTime(2026, 3, 21, 10, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.DaXacNhan, Note = "Tái khám sau điều trị amidan", Diagnosis = null },
+                // Chờ xác nhận / chờ thanh toán — test luồng pending → thanh toán
+                new Appointment { Id = 4, PatientId = 3, DoctorId = 2, ScheduleId = 3, BookingCode = "APT-2026-00004", BookedAt = new DateTime(2026, 3, 21, 11, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.ChoXacNhan, Note = "Nghe kém tai phải", Diagnosis = null },
+                // Lịch trẻ em ngày 23/3 — test bác sĩ nhi
+                new Appointment { Id = 5, PatientId = 5, DoctorId = 3, ScheduleId = 4, BookingCode = "APT-2026-00005", BookedAt = new DateTime(2026, 3, 21, 14, 0, 0, DateTimeKind.Utc), Status = AppointmentStatus.DaXacNhan, Note = "Trẻ 7 tuổi, viêm tai giữa tái phát", Diagnosis = null }
             );
 
             modelBuilder.Entity<Notification>().HasData(
