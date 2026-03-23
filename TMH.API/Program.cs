@@ -36,26 +36,26 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // --- JWT Authentication ---
 // Đây là phần cốt lõi: cấu hình cách ASP.NET Core đọc và xác thực JWT token
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey   = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
+var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
 
 builder.Services.AddAuthentication(options =>
 {
     // Đặt JWT làm scheme mặc định cho cả xác thực lẫn challenge (yêu cầu đăng nhập)
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey         = new SymmetricSecurityKey(secretKey),
-        ValidateIssuer           = true,
-        ValidIssuer              = jwtSettings["Issuer"],
-        ValidateAudience         = true,
-        ValidAudience            = jwtSettings["Audience"],
-        ValidateLifetime         = true,
-        ClockSkew                = TimeSpan.Zero
+        IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"],
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
     };
 
     // Khi token hết hạn hoặc không hợp lệ, ASP.NET Core trả về thông báo tiếng Việt
@@ -79,8 +79,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWebApp", policy =>
         policy.WithOrigins(
-                "https://localhost:7200",   // Web App dev URL
-                "http://localhost:5200"
+                "https://localhost:63354",   // Web App dev URL
+                "http://localhost:63355"
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
@@ -94,7 +94,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AppointmentService>();
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<VnPayService>();
-
+builder.Services.AddScoped<PatientService>();
 builder.Services.AddControllers();
 
 // --- Swagger UI: tài liệu API tự động, tích hợp nút "Authorize" với JWT ---
@@ -103,19 +103,19 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title       = "TMH Clinic API",
-        Version     = "v1",
+        Title = "TMH Clinic API",
+        Version = "v1",
         Description = "API cho Hệ thống Phòng Khám Tai Mũi Họng — quản lý xác thực, bệnh nhân, lịch khám."
     });
 
     // Thêm nút "Authorize" vào Swagger UI để test endpoint cần JWT
     var securityScheme = new OpenApiSecurityScheme
     {
-        Name         = "Authorization",
-        Description  = "Nhập token theo định dạng: **Bearer {token}**",
-        In           = ParameterLocation.Header,
-        Type         = SecuritySchemeType.ApiKey,
-        Scheme       = "Bearer",
+        Name = "Authorization",
+        Description = "Nhập token theo định dạng: **Bearer {token}**",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
         BearerFormat = "JWT"
     };
     options.AddSecurityDefinition("Bearer", securityScheme);
@@ -147,7 +147,7 @@ if (app.Environment.IsDevelopment())
     // Tự động tạo database nếu chưa tồn tại khi chạy development
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();

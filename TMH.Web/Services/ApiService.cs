@@ -149,7 +149,66 @@ namespace TMH.Web.Services
 
         public async Task<AppointmentResponseDto?> CancelAppointmentAsync(int id)
             => await PostAsync<AppointmentResponseDto>($"api/appointment/cancel/{id}", new { });
+        // =====================================================================
+        // PATIENT — Quản lý hồ sơ bệnh nhân
+        // =====================================================================
 
+        /// <summary>
+        /// Lấy danh sách hồ sơ của user đang đăng nhập.
+        /// Dùng để populate dropdown "Chọn hồ sơ" trên form đặt lịch.
+        /// </summary>
+        public async Task<List<PatientDto>?> GetMyPatientsAsync()
+            => await GetAsync<List<PatientDto>>("api/patient/my-profiles");
+
+        /// <summary>Tạo hồ sơ mới (bản thân hoặc người thân).</summary>
+        public async Task<PatientResponseDto?> CreatePatientAsync(PatientUpsertDto dto)
+            => await PostAsync<PatientResponseDto>("api/patient", dto);
+
+        /// <summary>Cập nhật thông tin hồ sơ (dto.Id > 0).</summary>
+        public async Task<PatientResponseDto?> UpdatePatientAsync(PatientUpsertDto dto)
+            => await PutAsync<PatientResponseDto>("api/patient", dto);
+
+        /// <summary>Xóa hồ sơ — chỉ xóa được nếu không còn lịch khám đang hoạt động.</summary>
+        public async Task<PatientResponseDto?> DeletePatientAsync(int patientId)
+            => await DeleteAsync<PatientResponseDto>($"api/patient/{patientId}");
+
+        // =====================================================================
+        // HELPER PUT / DELETE (bổ sung vào ApiService nếu chưa có)
+        // =====================================================================
+
+        private async Task<T?> PutAsync<T>(string endpoint, object body)
+        {
+            AttachToken();
+            var json = JsonSerializer.Serialize(body);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            try
+            {
+                var response = await _http.PutAsync(endpoint, content);
+                var responseJson = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<T>(responseJson, _jsonOpts);
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"[ApiService] PutAsync lỗi: {ex.Message}");
+                return default;
+            }
+        }
+
+        private async Task<T?> DeleteAsync<T>(string endpoint)
+        {
+            AttachToken();
+            try
+            {
+                var response = await _http.DeleteAsync(endpoint);
+                var responseJson = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<T>(responseJson, _jsonOpts);
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"[ApiService] DeleteAsync lỗi: {ex.Message}");
+                return default;
+            }
+        }
     }
 
 

@@ -17,22 +17,20 @@ namespace TMH.API.Controllers
         }
 
         // POST /api/payment/create-payment-url
-        // Bệnh nhân bấm thanh toán → API trả về URL để redirect sang VNPay
         [HttpPost("create-payment-url")]
         [Authorize(Roles = "Patient")]
-        public IActionResult CreatePaymentUrl([FromBody] VnPaymentRequestDto dto)
+        public async Task<IActionResult> CreatePaymentUrl([FromBody] VnPaymentRequestDto dto)
         {
-            var paymentUrl = _vnPayService.CreatePaymentUrl(HttpContext, dto);
+            var paymentUrl = await _vnPayService.CreatePaymentUrl(HttpContext, dto);
             return Ok(new { url = paymentUrl });
         }
 
         // GET /api/payment/payment-return
-        // VNPay gọi về endpoint này sau khi thanh toán
         [HttpGet("payment-return")]
         [AllowAnonymous]
-        public IActionResult PaymentReturn()
+        public async Task<IActionResult> PaymentReturn()
         {
-            var response = _vnPayService.PaymentExecute(Request.Query);
+            var response = await _vnPayService.PaymentExecute(Request.Query);
             return Ok(response);
         }
     }

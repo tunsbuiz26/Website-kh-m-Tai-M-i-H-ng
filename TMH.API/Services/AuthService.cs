@@ -111,7 +111,7 @@ namespace TMH.API.Services
             // --- Bước 1: Tìm user ---
             string input = dto.UsernameOrEmail.Trim().ToLower();
             var user = await _db.Users
-                .FirstOrDefaultAsync(u => u.Username == input || u.Email == input);
+                .FirstOrDefaultAsync(u => u.Username == input || u.Email == input || u.Phone == input);
 
             if (user == null)
                 return Fail("Thông tin đăng nhập không chính xác.");
