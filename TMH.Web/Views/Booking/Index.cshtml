@@ -6,6 +6,28 @@
     var preselectedDoctorId = Context.Request.Query["doctorId"].ToString();
 }
 <style>
+    @@keyframes pulse-green {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(34,197,94,0.5);
+        }
+
+        50% {
+            box-shadow: 0 0 0 7px rgba(34,197,94,0);
+        }
+    }
+
+    @@keyframes dot-blink {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 0.4;
+            transform: scale(0.75);
+        }
+    }
+
     .book-wrap {
         max-width: 860px;
         margin: 40px auto;
@@ -111,38 +133,80 @@
         color: #7a9bb0;
     }
 
+    /* Slot */
     .slot-grid {
         display: grid;
         grid-template-columns: repeat(4,1fr);
-        gap: 8px;
+        gap: 10px;
         margin-bottom: 24px;
     }
 
     .slot-btn {
-        border: 1px solid #d4e8f5;
-        border-radius: 8px;
-        padding: 8px 6px;
+        position: relative;
+        border: 1.5px solid #bbf7d0;
+        border-radius: 10px;
+        padding: 12px 8px;
         font-size: 12px;
         font-weight: 500;
         color: #3a5a72;
         cursor: pointer;
         text-align: center;
-        background: #fff;
+        background: #f0fdf4;
         transition: all .15s;
         font-family: 'DM Sans',sans-serif;
+        animation: pulse-green 2.4s ease-in-out infinite;
     }
 
         .slot-btn:hover {
             border-color: #1a6fa8;
             background: #f0f8ff;
             color: #0a4d7c;
+            animation: none;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26,111,168,0.12);
         }
 
         .slot-btn.selected {
             border-color: #0a4d7c;
             background: #0a4d7c;
             color: #fff;
+            animation: none;
         }
+
+            .slot-btn.selected .slot-dot {
+                background: #fff;
+            }
+
+            .slot-btn.selected .slot-available {
+                color: rgba(255,255,255,0.8);
+                border-color: rgba(255,255,255,0.3);
+                background: rgba(255,255,255,0.1);
+            }
+
+    /* Chấm xanh nhấp nháy */
+    .slot-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        background: #22c55e;
+        border-radius: 50%;
+        margin-right: 4px;
+        vertical-align: middle;
+        animation: dot-blink 1.6s ease-in-out infinite;
+    }
+    /* Badge "Còn X chỗ" */
+    .slot-available {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 6px;
+        background: #dcfce7;
+        border: 1px solid #bbf7d0;
+        color: #15803d;
+        font-size: 10px;
+        font-weight: 500;
+        padding: 2px 8px;
+        border-radius: 20px;
+    }
 
     .form-section {
         background: #fff;
@@ -272,47 +336,13 @@
         margin-top: 0;
     }
 
-    .btn-vnpay {
-        flex: 1;
-        height: 44px;
-        background: #fff;
-        color: #e0292a;
-        border: 2px solid #e0292a;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: 'DM Sans',sans-serif;
-        transition: all .15s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-
-        .btn-vnpay:hover {
-            background: #e0292a;
-            color: #fff;
-        }
-
-        .btn-vnpay:disabled {
-            border-color: #d4b0b0;
-            color: #d4b0b0;
-            cursor: not-allowed;
-            background: #fff;
-        }
-
-        .btn-vnpay img {
-            height: 20px;
-        }
-
     .payment-note {
         font-size: 11px;
         color: #7a9bb0;
         text-align: center;
         margin-top: 10px;
     }
-    /* Hồ sơ bệnh nhân */
+
     .patient-row {
         display: flex;
         gap: 10px;
@@ -345,7 +375,7 @@
             background: #0a4d7c;
             color: #fff;
         }
-    /* Modal */
+
     .modal-overlay {
         display: none;
         position: fixed;
@@ -476,7 +506,14 @@
 
             <!-- Bước 2: Chọn khung giờ -->
             <div class="form-section" id="sec2" style="display:none">
-                <div class="form-section-title">Chọn khung giờ — <span id="selDoctorName" style="color:#c9a227"></span></div>
+                <div class="form-section-title">
+                    Chọn ca khám —
+                    <span id="selDoctorName" style="color:#c9a227"></span>
+                    <span style="font-size:11px;color:#7a9bb0;font-weight:400;margin-left:8px;">
+                        <span style="display:inline-block;width:7px;height:7px;background:#22c55e;border-radius:50%;margin-right:3px;vertical-align:middle;"></span>
+                        Ô xanh = còn chỗ trống
+                    </span>
+                </div>
                 <div class="slot-grid" id="slotGrid"></div>
             </div>
 
@@ -506,7 +543,7 @@
                 <div class="summary-row"><span class="lbl">Bác sĩ</span><span class="val" id="sumDoctor"></span></div>
                 <div class="summary-row"><span class="lbl">Chuyên khoa</span><span class="val" id="sumSpec"></span></div>
                 <div class="summary-row"><span class="lbl">Ngày khám</span><span class="val" id="sumDate"></span></div>
-                <div class="summary-row"><span class="lbl">Khung giờ</span><span class="val" id="sumTime"></span></div>
+                <div class="summary-row"><span class="lbl">Ca khám</span><span class="val" id="sumTime"></span></div>
                 <div class="summary-row"><span class="lbl">Phí khám</span><span class="val" style="color:#e0292a">100.000 VNĐ</span></div>
             </div>
 
@@ -517,20 +554,12 @@
                 </button>
                 <!--
                 <button type="button" class="btn-vnpay" id="btnVnPay" disabled onclick="return payWithVnPay()">
-                    <img src="https://sandbox.vnpayment.vn/paymentv2/Assets/Images/logoVnpay.png" alt="VNPay" onerror="this.style.display='none'" />
                     Thanh toán VNPay
                 </button>
                 -->
             </div>
             <p class="payment-note">💡 Chọn <strong>Xác nhận đặt lịch</strong> để đặt trước, hoặc <strong>Thanh toán VNPay</strong> để đặt lịch và thanh toán ngay</p>
         </form>
-        <!--
-                <form id="vnpayForm" asp-action="Pay" asp-controller="Payment" method="post" style="display:none">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="appointmentId" id="vAppointmentId" value="0" />
-            <input type="hidden" name="amount" value="100000" />
-        </form>
-         -->
     }
 </div>
 
@@ -562,7 +591,7 @@
 <script>
     var doctorData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model));
     var selectedDoctor = null;
-    var selectedSlot = null;
+    var selectedSlot   = null;
     var preselectedDoctorId = @Html.Raw(string.IsNullOrEmpty(preselectedDoctorId) ? "0" : preselectedDoctorId);
     var csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
@@ -582,28 +611,78 @@
         el.classList.add('selected');
         selectedDoctor = doctorData.find(d => d.DoctorId === docId);
         document.getElementById('selDoctorName').textContent = name;
-        var grid = document.getElementById('slotGrid');
-        grid.innerHTML = '';
-        if (!selectedDoctor || !selectedDoctor.AvailableSlots.length) {
-            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1">Không có khung giờ trống</p>';
-        } else {
-            selectedDoctor.AvailableSlots.forEach(function (s) {
-                var btn = document.createElement('div');
-                btn.className = 'slot-btn';
-                var d = new Date(s.WorkDate);
-                btn.innerHTML = '<div style="font-weight:500">' + d.toLocaleDateString('vi-VN') + '</div>' +
-                    '<div>' + s.StartTime + ' – ' + s.EndTime + '</div>' +
-                    '<div style="color:#c9a227;font-size:10px">Còn ' + s.RemainingSlots + ' chỗ</div>';
-                btn.onclick = function () { selectSlot(s, name, spec, btn); };
-                grid.appendChild(btn);
-            });
-        }
+
+        renderSlots(selectedDoctor, name, spec);
+
         document.getElementById('sec2').style.display = 'block';
         document.getElementById('step2-bar').classList.add('active');
         selectedSlot = null;
         document.getElementById('hScheduleId').value = '';
         checkReady();
     }
+
+    // Chia mỗi WorkSchedule thành các ca 60–90 phút, tối đa 5 ca
+    function renderSlots(doctor, docName, spec) {
+        var grid = document.getElementById('slotGrid');
+        grid.innerHTML = '';
+        if (!doctor || !doctor.AvailableSlots.length) {
+            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1">Không có ca khám trống</p>';
+            return;
+        }
+
+        var allCa = [];
+        doctor.AvailableSlots.forEach(function (s) {
+            splitToCa(s).forEach(function (ca) { allCa.push(ca); });
+        });
+
+        if (!allCa.length) {
+            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1">Không có ca khám trống</p>';
+            return;
+        }
+
+        allCa.forEach(function (ca) {
+            var btn = document.createElement('div');
+            btn.className = 'slot-btn';
+            var d   = new Date(ca.WorkDate);
+            var day = d.toLocaleDateString('vi-VN', { weekday: 'short' });
+            var dt  = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            btn.innerHTML =
+                '<div style="font-size:10px;color:#7a9bb0;margin-bottom:2px;">' + day + ' ' + dt + '</div>' +
+                '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">' + ca.startLabel + ' – ' + ca.endLabel + '</div>' +
+                '<div class="slot-available"><span class="slot-dot"></span>' + ca.remaining + ' / 5 chỗ trống</div>';
+            btn.onclick = function () { selectSlot(ca, docName, spec, btn); };
+            grid.appendChild(btn);
+        });
+    }
+
+    function splitToCa(s) {
+        var result   = [];
+        var startMin = toMin(s.StartTime);
+        var endMin   = toMin(s.EndTime);
+        var total    = endMin - startMin;
+        if (total <= 0) return result;
+
+        // Mỗi ca 60–90 phút, tối đa 5 ca
+        var caMin   = total <= 90 ? total : (total <= 180 ? 90 : 60);
+        var maxCa   = Math.min(5, Math.floor(total / caMin));
+        var perSlot = Math.max(1, Math.floor(Math.min(5, s.RemainingSlots) / maxCa));
+
+        for (var i = 0; i < maxCa; i++) {
+            var cs = startMin + i * caMin;
+            var ce = cs + caMin;
+            result.push({
+                ScheduleId: s.ScheduleId,
+                WorkDate:   s.WorkDate,
+                startLabel: toTime(cs),
+                endLabel:   toTime(ce),
+                remaining:  perSlot
+            });
+        }
+        return result;
+    }
+
+    function toMin(t) { var p = (t || '00:00').split(':'); return +p[0] * 60 + +p[1]; }
+    function toTime(m) { var h = Math.floor(m/60), mn = m%60; return (h<10?'0':'')+h+':'+(mn<10?'0':'')+mn; }
 
     function selectSlot(slot, docName, spec, el) {
         document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
@@ -614,89 +693,61 @@
         document.getElementById('step3-bar').classList.add('active');
         var d = new Date(slot.WorkDate);
         document.getElementById('sumDoctor').textContent = docName;
-        document.getElementById('sumSpec').textContent = spec;
-        document.getElementById('sumDate').textContent = d.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        document.getElementById('sumTime').textContent = slot.StartTime + ' – ' + slot.EndTime;
+        document.getElementById('sumSpec').textContent   = spec;
+        document.getElementById('sumDate').textContent   = d.toLocaleDateString('vi-VN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+        document.getElementById('sumTime').textContent   = slot.startLabel + ' – ' + slot.endLabel;
         document.getElementById('summaryBox').style.display = 'block';
         checkReady();
     }
 
     function checkReady() {
-        var ok = selectedDoctor && selectedSlot;
-        document.getElementById('btnSubmit').disabled = !ok;
+        document.getElementById('btnSubmit').disabled = !(selectedDoctor && selectedSlot);
     }
 
     function validateForm() {
-        if (!document.getElementById('hPatientId').value) { alert('Vui lòng chọn hồ sơ bệnh nhân'); return false; }
-        if (!document.getElementById('hScheduleId').value) { alert('Vui lòng chọn khung giờ'); return false; }
+        if (!document.getElementById('hPatientId').value)  { alert('Vui lòng chọn hồ sơ bệnh nhân'); return false; }
+        if (!document.getElementById('hScheduleId').value) { alert('Vui lòng chọn ca khám');          return false; }
         return true;
     }
 
-    function payWithVnPay() {
-        var pid = document.getElementById('hPatientId').value;
-        if (!pid) { alert('Vui lòng chọn hồ sơ bệnh nhân'); return false; }
-        if (!document.getElementById('hScheduleId').value) { alert('Vui lòng chọn khung giờ'); return false; }
-        fetch('/Booking/BookAndPay', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-            body: JSON.stringify({ patientId: parseInt(pid), scheduleId: parseInt(document.getElementById('hScheduleId').value), note: document.querySelector('textarea[name="note"]').value })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success && data.appointmentId) { document.getElementById('vAppointmentId').value = data.appointmentId; document.getElementById('vnpayForm').submit(); }
-            else alert(data.message || 'Không thể đặt lịch.');
-        })
-        .catch(() => alert('Có lỗi xảy ra.'));
-        return false;
-    }
-
-    // Modal hồ sơ mới
+    // Modal
     function openModal() {
-        document.getElementById('mName').value = '';
-        document.getElementById('mDob').value = '';
-        document.getElementById('mGender').value = '';
-        document.getElementById('mHistory').value = '';
+        ['mName','mDob','mGender','mHistory'].forEach(function(id){ document.getElementById(id).value=''; });
         document.getElementById('modalErr').style.display = 'none';
         document.getElementById('modalOverlay').classList.add('open');
     }
-
     function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
 
     function savePatient() {
-        var name = document.getElementById('mName').value.trim();
-        var dob = document.getElementById('mDob').value;
-        var gender = document.getElementById('mGender').value;
+        var name    = document.getElementById('mName').value.trim();
+        var dob     = document.getElementById('mDob').value;
+        var gender  = document.getElementById('mGender').value;
         var history = document.getElementById('mHistory').value.trim();
-        var errEl = document.getElementById('modalErr');
-        if (!name) { errEl.textContent = 'Vui lòng nhập họ tên.'; errEl.style.display = 'block'; return; }
-        if (!dob) { errEl.textContent = 'Vui lòng chọn ngày sinh.'; errEl.style.display = 'block'; return; }
-        if (!gender) { errEl.textContent = 'Vui lòng chọn giới tính.'; errEl.style.display = 'block'; return; }
+        var errEl   = document.getElementById('modalErr');
+        if (!name)   { errEl.textContent='Vui lòng nhập họ tên.';    errEl.style.display='block'; return; }
+        if (!dob)    { errEl.textContent='Vui lòng chọn ngày sinh.'; errEl.style.display='block'; return; }
+        if (!gender) { errEl.textContent='Vui lòng chọn giới tính.'; errEl.style.display='block'; return; }
         errEl.style.display = 'none';
         var btn = document.getElementById('btnSave');
-        btn.disabled = true; btn.textContent = 'Đang lưu...';
+        btn.disabled=true; btn.textContent='Đang lưu...';
         fetch('/Booking/CreatePatient', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
-            body: JSON.stringify({ fullName: name, dateOfBirth: dob, gender: gender, medicalHistory: history || null })
+            body: JSON.stringify({ fullName:name, dateOfBirth:dob, gender:gender, medicalHistory:history||null })
         })
         .then(r => r.json())
-        .then(data => {
+        .then(function(data) {
             if (data.success && data.patient) {
                 var p = data.patient;
-                var age = Math.floor((new Date() - new Date(p.dateOfBirth)) / (365.25 * 24 * 3600 * 1000));
-                var label = p.fullName + ' (' + p.gender + ', ' + age + ' tuổi) — ' + p.recordCode;
+                var age = Math.floor((new Date()-new Date(p.dateOfBirth))/(365.25*24*3600*1000));
                 var sel = document.getElementById('selPatient');
-                var opt = new Option(label, p.id);
-                sel.appendChild(opt);
-                sel.value = p.id;
-                document.getElementById('hPatientId').value = p.id;
+                var opt = new Option(p.fullName+' ('+p.gender+', '+age+' tuổi) — '+p.recordCode, p.id);
+                sel.appendChild(opt); sel.value=p.id;
+                document.getElementById('hPatientId').value=p.id;
                 closeModal();
-            } else {
-                errEl.textContent = data.message || 'Có lỗi xảy ra.';
-                errEl.style.display = 'block';
-            }
+            } else { errEl.textContent=data.message||'Có lỗi xảy ra.'; errEl.style.display='block'; }
         })
-        .catch(() => { errEl.textContent = 'Không kết nối được máy chủ.'; errEl.style.display = 'block'; })
-        .finally(() => { btn.disabled = false; btn.textContent = 'Lưu hồ sơ'; });
+        .catch(function(){ errEl.textContent='Không kết nối được máy chủ.'; errEl.style.display='block'; })
+        .finally(function(){ btn.disabled=false; btn.textContent='Lưu hồ sơ'; });
     }
 </script>

@@ -209,6 +209,26 @@ namespace TMH.Web.Services
                 return default;
             }
         }
+
+        // =====================================================================
+        // CHAT — Gọi chatbot AI qua TMH.API
+        // =====================================================================
+        public async Task<object> AskChatAsync(object dto)
+        {
+            AttachToken();
+            var json = JsonSerializer.Serialize(dto);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            try
+            {
+                var response = await _http.PostAsync("api/chat", content);
+                var raw = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<object>(raw, _jsonOpts) ?? new { reply = "Lỗi không xác định." };
+            }
+            catch
+            {
+                return new { reply = "Không kết nối được đến máy chủ." };
+            }
+        }
     }
 
 

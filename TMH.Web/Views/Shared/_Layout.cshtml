@@ -10,7 +10,7 @@
 </head>
 <body>
 
-@*
+    @*
     _Layout.cshtml là "khung" dùng chung cho toàn bộ Web App.
     Mọi trang đều kế thừa layout này. Phần nội dung riêng của từng trang
     được chèn vào @RenderBody().
@@ -20,192 +20,416 @@
       - Đã đăng nhập: hiển thị tên người dùng, role, và dropdown menu
 *@
 
-@{
-    // Đọc trạng thái đăng nhập từ Session (được set trong AccountController)
-    bool   isLoggedIn = Context.Session.GetString("JwtToken") != null;
-    string userName   = Context.Session.GetString("UserName") ?? "";
-    string userRole   = Context.Session.GetString("UserRole") ?? "";
+    @{
+        // Đọc trạng thái đăng nhập từ Session (được set trong AccountController)
+        bool isLoggedIn = Context.Session.GetString("JwtToken") != null;
+        string userName = Context.Session.GetString("UserName") ?? "";
+        string userRole = Context.Session.GetString("UserRole") ?? "";
 
-    // Dịch role code → tên hiển thị tiếng Việt
-    string roleDisplay = userRole switch
-    {
-        "Admin"   => "Quản trị viên",
-        "Doctor"  => "Bác sĩ",
-        "Staff"   => "Lễ tân / Nhân viên",
-        "Patient" => "Bệnh nhân",
-        _         => ""
-    };
-
-    // Initials cho avatar (2 chữ đầu của tên)
-    string initials = userName.Length >= 2 ? userName[..2].ToUpper() : "??";
-}
-
-<!-- ===== NAVBAR ===== -->
-<nav class="nav">
-    <div class="nav-logo">
-        <div class="logo-icon">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M10 3v14M3 10h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-            </svg>
-        </div>
-        <a asp-controller="Home" asp-action="Index" class="logo-name">
-            Phòng Khám <span>Tai Mũi Họng</span>
-        </a>
-    </div>
-
-    <div class="nav-links">
-        <a asp-controller="Home" asp-action="Index"
-           class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
-            Trang chủ
-        </a>
-        <a href="#dich-vu" class="nav-link">Dịch vụ</a>
-        <a href="#bac-si"  class="nav-link">Bác sĩ</a>
-        <a href="#tin-tuc" class="nav-link">Tin tức</a>
-        <a asp-controller="Home" asp-action="Contact" class="nav-link">Liên hệ</a>
-    </div>
-
-    <div class="nav-actions">
-        @if (!isLoggedIn)
+        // Dịch role code → tên hiển thị tiếng Việt
+        string roleDisplay = userRole switch
         {
-            @* Chưa đăng nhập: hiện nút Đăng nhập & Đăng ký *@
-            <a asp-controller="Account" asp-action="Login" class="btn-outline">Đăng nhập</a>
-            <a asp-controller="Account" asp-action="Register" class="btn-solid">Đăng ký</a>
-        }
-        else
-        {
-                @* Đã đăng nhập: hiện avatar + dropdown menu *@
-            <div class="user-dropdown" id="userDropdown">
-                <div class="user-toggle" onclick="toggleDropdown()">
-                    <div class="user-avatar-sm">@initials</div>
-                    <div class="user-toggle-info">
-                        <span class="user-toggle-name">@userName</span>
-                        <span class="user-toggle-role">@roleDisplay</span>
-                    </div>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="opacity:.5">
-                        <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    </svg>
-                </div>
+            "Admin" => "Quản trị viên",
+            "Doctor" => "Bác sĩ",
+            "Staff" => "Lễ tân / Nhân viên",
+            "Patient" => "Bệnh nhân",
+            _ => ""
+        };
 
-                <div class="dropdown-menu" id="dropdownMenu">
-                    <!-- Menu items khác nhau tùy theo Role -->
-                    @if (userRole == "Patient")
-                    {
-                        <a asp-controller="Patient" asp-action="Index"       class="dd-item">📅 Lịch khám của tôi</a>
-                        <a asp-controller="Patient" asp-action="Results"     class="dd-item">🧪 Kết quả xét nghiệm</a>
-                        <a asp-controller="Patient" asp-action="Profile"     class="dd-item">👤 Hồ sơ cá nhân</a>
-                    }
-                    @if (userRole == "Doctor")
-                    {
-                        <a asp-controller="Doctor"  asp-action="Dashboard"   class="dd-item">🩺 Dashboard bác sĩ</a>
-                        <a asp-controller="Doctor"  asp-action="Schedule"    class="dd-item">📅 Lịch khám hôm nay</a>
-                        <a asp-controller="Doctor"  asp-action="Patients"    class="dd-item">👥 Danh sách bệnh nhân</a>
-                    }
-                    @if (userRole == "Staff")
-                    {
-                        <a asp-controller="Staff"   asp-action="Dashboard"   class="dd-item">🖥️ Dashboard nhân viên</a>
-                        <a asp-controller="Staff"   asp-action="Appointments"class="dd-item">📋 Quản lý lịch đặt khám</a>
-                    }
-                    @if (userRole == "Admin")
-                    {
-                        <a asp-controller="Admin"   asp-action="Dashboard"   class="dd-item">⚙️ Dashboard quản trị</a>
-                        <a asp-controller="Admin"   asp-action="Users"       class="dd-item">👥 Quản lý người dùng</a>
-                        <a asp-controller="Admin"   asp-action="Reports"     class="dd-item">📊 Báo cáo thống kê</a>
-                    }
-                    <div class="dd-divider"></div>
-                    <a asp-controller="Account" asp-action="Logout"          class="dd-item dd-logout">🚪 Đăng xuất</a>
-                </div>
+        // Initials cho avatar (2 chữ đầu của tên)
+        string initials = userName.Length >= 2 ? userName[..2].ToUpper() : "??";
+    }
+
+    <!-- ===== NAVBAR ===== -->
+    <nav class="nav">
+        <div class="nav-logo">
+            <div class="logo-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 3v14M3 10h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round" />
+                </svg>
             </div>
-        }
-    </div>
-</nav>
-
-<!-- ===== THÔNG BÁO TOÀN CỤC (TempData) ===== -->
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success" id="globalAlert">
-        @TempData["SuccessMessage"]
-        <button onclick="document.getElementById('globalAlert').remove()">✕</button>
-    </div>
-}
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-error" id="globalAlertErr">
-        @TempData["ErrorMessage"]
-        <button onclick="document.getElementById('globalAlertErr').remove()">✕</button>
-    </div>
-}
-
-<!-- ===== NỘI DUNG TRANG ===== -->
-<main>
-    @RenderBody()
-</main>
-
-<!-- ===== FOOTER ===== -->
-<footer class="footer">
-    <div class="footer-grid">
-        <div>
-            <div class="footer-brand">Phòng Khám <span>Tai Mũi Họng</span></div>
-            <div class="footer-desc">Chuyên khoa Tai Mũi Họng hàng đầu với đội ngũ bác sĩ chuyên sâu và hệ thống nội soi thế hệ mới.</div>
-            <div class="footer-contact">
-                <div><strong>Địa chỉ:</strong> 123 Đường Y Tế, Q.1, TP.HCM</div>
-                <div><strong>Hotline:</strong> 1800 5678</div>
-                <div><strong>Email:</strong> contact@pktatmuihong.vn</div>
-            </div>
+            <a asp-controller="Home" asp-action="Index" class="logo-name">
+                Phòng Khám <span>Tai Mũi Họng</span>
+            </a>
         </div>
-        <div>
-            <div class="footer-heading">Dịch vụ TMH</div>
-            <a href="#" class="footer-link">Nội soi Tai Mũi Họng</a>
-            <a href="#" class="footer-link">Đo thính lực</a>
-            <a href="#" class="footer-link">Điều trị viêm xoang</a>
-            <a href="#" class="footer-link">Phẫu thuật Amidan</a>
-            <a href="#" class="footer-link">TMH Nhi khoa</a>
+
+        <div class="nav-links">
+            <a asp-controller="Home" asp-action="Index"
+               class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
+                Trang chủ
+            </a>
+            <a href="#dich-vu" class="nav-link">Dịch vụ</a>
+            <a href="#bac-si" class="nav-link">Bác sĩ</a>
+            <a href="#tin-tuc" class="nav-link">Tin tức</a>
+            <a asp-controller="Home" asp-action="Contact" class="nav-link">Liên hệ</a>
         </div>
-        <div>
-            <div class="footer-heading">Bệnh nhân</div>
+
+        <div class="nav-actions">
             @if (!isLoggedIn)
             {
-                <a asp-controller="Account"  asp-action="Register" class="footer-link">Đăng ký tài khoản</a>
-                <a asp-controller="Account"  asp-action="Login"    class="footer-link">Đặt lịch khám</a>
+                @* Chưa đăng nhập: hiện nút Đăng nhập & Đăng ký *@
+                <a asp-controller="Account" asp-action="Login" class="btn-outline">Đăng nhập</a>
+                <a asp-controller="Account" asp-action="Register" class="btn-solid">Đăng ký</a>
             }
             else
             {
-                <a asp-controller="Booking"  asp-action="Index"     class="footer-link">Đặt lịch khám</a>
-                <a asp-controller="Patient"  asp-action="Results"  class="footer-link">Tra cứu kết quả</a>
-                <a asp-controller="Patient"  asp-action="Profile"  class="footer-link">Hồ sơ bệnh án</a>
+                @* Đã đăng nhập: hiện avatar + dropdown menu *@
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-toggle" onclick="toggleDropdown()">
+                        <div class="user-avatar-sm">@initials</div>
+                        <div class="user-toggle-info">
+                            <span class="user-toggle-name">@userName</span>
+                            <span class="user-toggle-role">@roleDisplay</span>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="opacity:.5">
+                            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <!-- Menu items khác nhau tùy theo Role -->
+                        @if (userRole == "Patient")
+                        {
+                            <a asp-controller="Patient" asp-action="Index" class="dd-item">📅 Lịch khám của tôi</a>
+                            <a asp-controller="Patient" asp-action="Results" class="dd-item">🧪 Kết quả xét nghiệm</a>
+                            <a asp-controller="Patient" asp-action="Profile" class="dd-item">👤 Hồ sơ cá nhân</a>
+                        }
+                        @if (userRole == "Doctor")
+                        {
+                            <a asp-controller="Doctor" asp-action="Dashboard" class="dd-item">🩺 Dashboard bác sĩ</a>
+                            <a asp-controller="Doctor" asp-action="Schedule" class="dd-item">📅 Lịch khám hôm nay</a>
+                            <a asp-controller="Doctor" asp-action="Patients" class="dd-item">👥 Danh sách bệnh nhân</a>
+                        }
+                        @if (userRole == "Staff")
+                        {
+                            <a asp-controller="Staff" asp-action="Dashboard" class="dd-item">🖥️ Dashboard nhân viên</a>
+                            <a asp-controller="Staff" asp-action="Appointments" class="dd-item">📋 Quản lý lịch đặt khám</a>
+                        }
+                        @if (userRole == "Admin")
+                        {
+                            <a asp-controller="Admin" asp-action="Dashboard" class="dd-item">⚙️ Dashboard quản trị</a>
+                            <a asp-controller="Admin" asp-action="Users" class="dd-item">👥 Quản lý người dùng</a>
+                            <a asp-controller="Admin" asp-action="Reports" class="dd-item">📊 Báo cáo thống kê</a>
+                        }
+                        <div class="dd-divider"></div>
+                        <a asp-controller="Account" asp-action="Logout" class="dd-item dd-logout">🚪 Đăng xuất</a>
+                    </div>
+                </div>
             }
         </div>
-        <div>
-            <div class="footer-heading">Hỗ trợ</div>
-            <a href="#" class="footer-link">Câu hỏi thường gặp</a>
-            <a asp-controller="Home" asp-action="HuongDan" class="footer-link">Hướng dẫn khám</a>
-            <a href="#" class="footer-link">Chính sách bảo mật</a>
-            <a asp-controller="Home" asp-action="Contact"  class="footer-link">Liên hệ hỗ trợ</a>
+    </nav>
+
+    <!-- ===== THÔNG BÁO TOÀN CỤC (TempData) ===== -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" id="globalAlert">
+            @TempData["SuccessMessage"]
+            <button onclick="document.getElementById('globalAlert').remove()">✕</button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error" id="globalAlertErr">
+            @TempData["ErrorMessage"]
+            <button onclick="document.getElementById('globalAlertErr').remove()">✕</button>
+        </div>
+    }
+
+    <!-- ===== NỘI DUNG TRANG ===== -->
+    <main>
+        @RenderBody()
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="footer-grid">
+            <div>
+                <div class="footer-brand">Phòng Khám <span>Tai Mũi Họng</span></div>
+                <div class="footer-desc">Chuyên khoa Tai Mũi Họng hàng đầu với đội ngũ bác sĩ chuyên sâu và hệ thống nội soi thế hệ mới.</div>
+                <div class="footer-contact">
+                    <div><strong>Địa chỉ:</strong> 123 Đường Y Tế, Q.1, TP.HCM</div>
+                    <div><strong>Hotline:</strong> 1800 5678</div>
+                    <div><strong>Email:</strong> contact@pktatmuihong.vn</div>
+                </div>
+            </div>
+            <div>
+                <div class="footer-heading">Dịch vụ TMH</div>
+                <a href="#" class="footer-link">Nội soi Tai Mũi Họng</a>
+                <a href="#" class="footer-link">Đo thính lực</a>
+                <a href="#" class="footer-link">Điều trị viêm xoang</a>
+                <a href="#" class="footer-link">Phẫu thuật Amidan</a>
+                <a href="#" class="footer-link">TMH Nhi khoa</a>
+            </div>
+            <div>
+                <div class="footer-heading">Bệnh nhân</div>
+                @if (!isLoggedIn)
+                {
+                    <a asp-controller="Account" asp-action="Register" class="footer-link">Đăng ký tài khoản</a>
+                    <a asp-controller="Account" asp-action="Login" class="footer-link">Đặt lịch khám</a>
+                }
+                else
+                {
+                    <a asp-controller="Booking" asp-action="Index" class="footer-link">Đặt lịch khám</a>
+                    <a asp-controller="Patient" asp-action="Results" class="footer-link">Tra cứu kết quả</a>
+                    <a asp-controller="Patient" asp-action="Profile" class="footer-link">Hồ sơ bệnh án</a>
+                }
+            </div>
+            <div>
+                <div class="footer-heading">Hỗ trợ</div>
+                <a href="#" class="footer-link">Câu hỏi thường gặp</a>
+                <a asp-controller="Home" asp-action="HuongDan" class="footer-link">Hướng dẫn khám</a>
+                <a href="#" class="footer-link">Chính sách bảo mật</a>
+                <a asp-controller="Home" asp-action="Contact" class="footer-link">Liên hệ hỗ trợ</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>© 2026 Phòng Khám Tai Mũi Họng. Bảo lưu mọi quyền.</span>
+            <span>Hệ thống ASP.NET Core MVC ✦</span>
+        </div>
+    </footer>
+
+    <script>
+        // Toggle dropdown menu người dùng
+        function toggleDropdown() {
+            document.getElementById('dropdownMenu').classList.toggle('open');
+        }
+        // Nhấn ngoài dropdown thì đóng lại
+        document.addEventListener('click', function(e) {
+            var dd = document.getElementById('userDropdown');
+            if (dd && !dd.contains(e.target))
+                document.getElementById('dropdownMenu')?.classList.remove('open');
+        });
+        // Tự ẩn thông báo sau 4 giây
+        setTimeout(function() {
+            document.getElementById('globalAlert')?.remove();
+            document.getElementById('globalAlertErr')?.remove();
+        }, 4000);
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- ===== CHATBOT BUBBLE ===== -->
+    <style>
+        @@keyframes chatPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(10,77,124,0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 10px rgba(10,77,124,0);
+            }
+        }
+
+        .chat-bubble {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 9999;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: #0a4d7c;
+            color: #fff;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            animation: chatPulse 2.5s ease-in-out infinite;
+            transition: transform .15s;
+        }
+
+            .chat-bubble:hover {
+                transform: scale(1.08);
+            }
+
+        .chat-window {
+            position: fixed;
+            bottom: 94px;
+            right: 28px;
+            z-index: 9998;
+            width: 340px;
+            max-height: 480px;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+            .chat-window.open {
+                display: flex;
+            }
+
+        .chat-head {
+            background: #0a4d7c;
+            color: #fff;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-head-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #f8fbff;
+        }
+
+        .chat-msg {
+            max-width: 82%;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 9px 13px;
+            border-radius: 14px;
+        }
+
+            .chat-msg.bot {
+                background: #fff;
+                border: 1px solid #d4e8f5;
+                color: #0d2d44;
+                align-self: flex-start;
+                border-bottom-left-radius: 4px;
+            }
+
+            .chat-msg.user {
+                background: #0a4d7c;
+                color: #fff;
+                align-self: flex-end;
+                border-bottom-right-radius: 4px;
+            }
+
+            .chat-msg.typing {
+                color: #7a9bb0;
+                font-style: italic;
+            }
+
+        .chat-footer {
+            padding: 10px 12px;
+            border-top: 1px solid #e8f0f7;
+            display: flex;
+            gap: 8px;
+            background: #fff;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid #d4e8f5;
+            border-radius: 20px;
+            padding: 8px 14px;
+            font-size: 13px;
+            outline: none;
+            font-family: 'DM Sans', sans-serif;
+            color: #0d2d44;
+        }
+
+            .chat-input:focus {
+                border-color: #1a6fa8;
+            }
+
+        .chat-send {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #0a4d7c;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s;
+        }
+
+            .chat-send:hover {
+                background: #1a6fa8;
+            }
+    </style>
+
+    <button class="chat-bubble" onclick="toggleChat()" title="Hỏi trợ lý AI">💬</button>
+
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-head">
+            <div class="chat-head-dot"></div>
+            <span>Trợ lý Phòng Khám TMH</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg bot">
+                Xin chào! Tôi có thể giúp bạn về triệu chứng tai mũi họng, đặt lịch khám, hoặc thông tin phòng khám. Bạn cần hỏi gì?
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input class="chat-input" id="chatInput" type="text" placeholder="Nhập câu hỏi..." maxlength="500"
+                   onkeydown="if(event.key==='Enter')sendChat()" />
+            <button class="chat-send" onclick="sendChat()">➤</button>
         </div>
     </div>
-    <div class="footer-bottom">
-        <span>© 2026 Phòng Khám Tai Mũi Họng. Bảo lưu mọi quyền.</span>
-        <span>Hệ thống ASP.NET Core MVC ✦</span>
-    </div>
-</footer>
 
-<script>
-// Toggle dropdown menu người dùng
-function toggleDropdown() {
-    document.getElementById('dropdownMenu').classList.toggle('open');
-}
-// Nhấn ngoài dropdown thì đóng lại
-document.addEventListener('click', function(e) {
-    var dd = document.getElementById('userDropdown');
-    if (dd && !dd.contains(e.target))
-        document.getElementById('dropdownMenu')?.classList.remove('open');
-});
-// Tự ẩn thông báo sau 4 giây
-setTimeout(function() {
-    document.getElementById('globalAlert')?.remove();
-    document.getElementById('globalAlertErr')?.remove();
-}, 4000);
-</script>
+    <script>
+        var chatHistory = [];
+        var chatOpen    = false;
 
-@await RenderSectionAsync("Scripts", required: false)
+        function toggleChat() {
+            chatOpen = !chatOpen;
+            document.getElementById('chatWindow').classList.toggle('open', chatOpen);
+            if (chatOpen) document.getElementById('chatInput').focus();
+        }
+
+        function sendChat() {
+            var input = document.getElementById('chatInput');
+            var msg   = input.value.trim();
+            if (!msg) return;
+            input.value = '';
+
+            appendMsg(msg, 'user');
+            chatHistory.push({ role: 'user', content: msg });
+
+            var typingEl = appendMsg('Đang soạn trả lời...', 'bot typing');
+
+            fetch('/api/chat-proxy', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ message: msg, history: chatHistory.slice(-10) })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                typingEl.remove();
+                var reply = data.reply || 'Xin lỗi, có lỗi xảy ra.';
+                appendMsg(reply, 'bot');
+                chatHistory.push({ role: 'assistant', content: reply });
+            })
+            .catch(function() {
+                typingEl.remove();
+                appendMsg('Không kết nối được. Vui lòng thử lại.', 'bot');
+            });
+        }
+
+        function appendMsg(text, cls) {
+            var box = document.getElementById('chatMessages');
+            var el  = document.createElement('div');
+            el.className = 'chat-msg ' + cls;
+            el.textContent = text;
+            box.appendChild(el);
+            box.scrollTop = box.scrollHeight;
+            return el;
+        }
+    </script>
 </body>
 </html>

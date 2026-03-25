@@ -95,6 +95,18 @@ builder.Services.AddScoped<AppointmentService>();
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<VnPayService>();
 builder.Services.AddScoped<PatientService>();
+builder.Services.AddScoped<ChatService>();
+
+// HttpClient riêng cho Anthropic API (tránh socket exhaustion khi dùng new HttpClient())
+builder.Services.AddHttpClient("AnthropicClient", client =>
+{
+    client.BaseAddress = new Uri("https://api.anthropic.com/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Background job nhắc lịch khám — chạy mỗi ngày lúc 08:00
+builder.Services.AddHostedService<NotificationReminderService>();
+
 builder.Services.AddControllers();
 
 // --- Swagger UI: tài liệu API tự động, tích hợp nút "Authorize" với JWT ---
