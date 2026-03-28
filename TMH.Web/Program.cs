@@ -13,7 +13,12 @@ using TMH.Web.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // --- MVC với Razor Views ---
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        opts.JsonSerializerOptions.DictionaryKeyPolicy  = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // --- Session: lưu JWT token và thông tin user sau khi đăng nhập ---
 // Session được lưu phía server (Memory). Trong production nên dùng Redis

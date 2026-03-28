@@ -211,13 +211,16 @@
     <!-- ===== CHATBOT BUBBLE ===== -->
     <style>
         @@keyframes chatPulse {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(10,77,124,0.4);
-            }
+            0%,100%
 
-            50% {
-                box-shadow: 0 0 0 10px rgba(10,77,124,0);
-            }
+        {
+            box-shadow: 0 0 0 0 rgba(10,77,124,0.4);
+        }
+
+        50% {
+            box-shadow: 0 0 0 10px rgba(10,77,124,0);
+        }
+
         }
 
         .chat-bubble {
@@ -281,6 +284,22 @@
             background: #22c55e;
             border-radius: 50%;
         }
+
+        .chat-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            transition: color .15s;
+        }
+
+            .chat-close:hover {
+                color: #fff;
+            }
 
         .chat-messages {
             flex: 1;
@@ -369,6 +388,7 @@
         <div class="chat-head">
             <div class="chat-head-dot"></div>
             <span>Trợ lý Phòng Khám TMH</span>
+            <button class="chat-close" onclick="toggleChat()" title="Đóng">✕</button>
         </div>
         <div class="chat-messages" id="chatMessages">
             <div class="chat-msg bot">
@@ -378,7 +398,7 @@
         <div class="chat-footer">
             <input class="chat-input" id="chatInput" type="text" placeholder="Nhập câu hỏi..." maxlength="500"
                    onkeydown="if(event.key==='Enter')sendChat()" />
-            <button class="chat-send" onclick="sendChat()">➤</button>
+            <button class="chat-send" onclick="sendChat()">&#10148;</button>
         </div>
     </div>
 

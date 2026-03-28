@@ -74,7 +74,23 @@ namespace TMH.Web.Services
         // =====================================================================
         // HELPER: GET chung — dùng cho các endpoint lấy dữ liệu
         // =====================================================================
-        public async Task<T?> GetAsync<T>(string endpoint)
+        // Trả về raw JSON string — dùng cho Admin forward, tránh mất key name khi re-serialize
+        public async Task<string?> GetRawJsonAsync(string endpoint)
+        {
+            AttachToken();
+            try
+            {
+                var response = await _http.GetAsync(endpoint);
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+        }
+
+                public async Task<T?> GetAsync<T>(string endpoint)
         {
             AttachToken();
             try
@@ -149,6 +165,22 @@ namespace TMH.Web.Services
 
         public async Task<AppointmentResponseDto?> CancelAppointmentAsync(int id)
             => await PostAsync<AppointmentResponseDto>($"api/appointment/cancel/{id}", new { });
+
+        // =====================================================================
+        // STAFF — Lễ tân: xem lịch theo ngày + cập nhật trạng thái
+        // =====================================================================
+
+        /// <summary>Lấy danh sách lịch khám theo ngày (dùng cho lễ tân và bác sĩ)</summary>
+        public async Task<List<AppointmentDetailDto>?> GetAppointmentsByDateAsync(DateTime date, int? doctorId = null)
+        {
+            var url = $"api/appointment/by-date?date={date:yyyy-MM-dd}";
+            if (doctorId.HasValue) url += $"&doctorId={doctorId.Value}";
+            return await GetAsync<List<AppointmentDetailDto>>(url);
+        }
+
+        /// <summary>Cập nhật trạng thái lịch khám (DaDen, DangKham, HoanThanh, VangMat...)</summary>
+        public async Task<AppointmentResponseDto?> UpdateAppointmentStatusAsync(UpdateAppointmentStatusDto dto)
+            => await PutAsync<AppointmentResponseDto>("api/appointment/update-status", dto);
         // =====================================================================
         // PATIENT — Quản lý hồ sơ bệnh nhân
         // =====================================================================
@@ -176,7 +208,7 @@ namespace TMH.Web.Services
         // HELPER PUT / DELETE (bổ sung vào ApiService nếu chưa có)
         // =====================================================================
 
-        private async Task<T?> PutAsync<T>(string endpoint, object body)
+        public async Task<T?> PutAsync<T>(string endpoint, object body)
         {
             AttachToken();
             var json = JsonSerializer.Serialize(body);
@@ -194,7 +226,7 @@ namespace TMH.Web.Services
             }
         }
 
-        private async Task<T?> DeleteAsync<T>(string endpoint)
+        public async Task<T?> DeleteAsync<T>(string endpoint)
         {
             AttachToken();
             try
@@ -210,23 +242,32 @@ namespace TMH.Web.Services
             }
         }
 
-        // =====================================================================
+        // PostPublicAsync — dùng khi cần gọi POST từ Admin (không phải Patient)
+        public async Task<T?> PostPublicAsync<T>(string endpoint, object body)
+            => await PostAsync<T>(endpoint, body);
+
+       
+        
+
+                // =====================================================================
         // CHAT — Gọi chatbot AI qua TMH.API
         // =====================================================================
-        public async Task<object> AskChatAsync(object dto)
+        public async Task<string> AskChatAsync(string message, IEnumerable<object>? history = null)
         {
             AttachToken();
-            var json = JsonSerializer.Serialize(dto);
+            var body = new { message, history };
+            var json    = JsonSerializer.Serialize(body);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             try
             {
                 var response = await _http.PostAsync("api/chat", content);
-                var raw = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<object>(raw, _jsonOpts) ?? new { reply = "Lỗi không xác định." };
+                var raw      = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                return doc.RootElement.TryGetProperty("reply", out var r) ? r.GetString() ?? "" : "";
             }
             catch
             {
-                return new { reply = "Không kết nối được đến máy chủ." };
+                return "Không kết nối được đến máy chủ.";
             }
         }
     }

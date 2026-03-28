@@ -107,7 +107,12 @@ builder.Services.AddHttpClient("AnthropicClient", client =>
 // Background job nhắc lịch khám — chạy mỗi ngày lúc 08:00
 builder.Services.AddHostedService<NotificationReminderService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        opts.JsonSerializerOptions.DictionaryKeyPolicy  = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // --- Swagger UI: tài liệu API tự động, tích hợp nút "Authorize" với JWT ---
 builder.Services.AddEndpointsApiExplorer();

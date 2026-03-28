@@ -1,10 +1,277 @@
+@model List<TMH.Shared.DTOs.AppointmentDetailDto>
 @{
     ViewBag.Title = "Dashboard Bác sĩ";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-<div style="padding:40px;">
-    <h2 style="font-family:'Crimson Pro',serif;font-size:26px;color:#0a4d7c;margin-bottom:8px;">
-        Xin chào, BS. @ViewBag.UserName!
-    </h2>
-    <p style="color:#7a9bb0;">Dashboard bác sĩ — xem lịch khám và hồ sơ bệnh nhân.</p>
+<style>
+    .doc-wrap { max-width: 1000px; margin: 32px auto; padding: 0 20px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .page-title { font-family: 'Crimson Pro', serif; font-size: 26px; font-weight: 600; color: #0a4d7c; }
+    .page-sub   { font-size: 13px; color: #7a9bb0; margin-top: 2px; }
+
+    /* Toolbar */
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fff; border: 1px solid #d4e8f5; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
+    .toolbar label { font-size: 12px; font-weight: 500; color: #3a5a72; text-transform: uppercase; letter-spacing: .04em; }
+    .toolbar input[type=date] { height: 36px; border: 1px solid #d4e8f5; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #0d2d44; outline: none; font-family: 'DM Sans', sans-serif; }
+    .toolbar input[type=date]:focus { border-color: #1a6fa8; }
+    .btn-load { height: 36px; padding: 0 18px; background: #0a4d7c; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .btn-load:hover { background: #1a6fa8; }
+
+    /* Stats */
+    .stats-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-card { flex: 1; min-width: 110px; background: #fff; border: 1px solid #d4e8f5; border-radius: 10px; padding: 12px 16px; text-align: center; }
+    .stat-num { font-size: 24px; font-weight: 700; color: #0a4d7c; }
+    .stat-lbl { font-size: 11px; color: #7a9bb0; margin-top: 2px; }
+    .stat-card.total .stat-num { color: #0a4d7c; }
+    .stat-card.den   .stat-num { color: #004085; }
+    .stat-card.kham  .stat-num { color: #155724; }
+    .stat-card.hoan  .stat-num { color: #383d41; }
+
+    /* Cards danh sách bệnh nhân */
+    .patient-list { display: flex; flex-direction: column; gap: 12px; }
+    .patient-card { background: #fff; border: 1px solid #d4e8f5; border-radius: 14px; padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; transition: border-color .15s; }
+    .patient-card:hover { border-color: #1a6fa8; }
+    .patient-card.active { border-color: #0a4d7c; background: #f8fbff; }
+
+    /* Avatar số thứ tự */
+    .order-num { width: 36px; height: 36px; border-radius: 50%; background: #0a4d7c; color: #fff; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+
+    .patient-info { flex: 1; }
+    .patient-name { font-size: 15px; font-weight: 500; color: #0a4d7c; margin-bottom: 4px; }
+    .patient-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #7a9bb0; margin-bottom: 8px; }
+    .booking-code { font-family: monospace; font-size: 11px; background: #f0f8ff; padding: 2px 8px; border-radius: 4px; color: #1a6fa8; }
+    .patient-note { font-size: 12px; color: #555; background: #fafafa; border-left: 3px solid #d4e8f5; padding: 6px 10px; border-radius: 0 6px 6px 0; margin-bottom: 8px; }
+
+    /* Badge trạng thái */
+    .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+    .badge-den  { background: #cce5ff; color: #004085; }
+    .badge-kham { background: #d4edda; color: #155724; }
+    .badge-hoan { background: #e2e3e5; color: #383d41; }
+    .badge-cho  { background: #fff3cd; color: #856404; }
+    .badge-vang { background: #fdecea; color: #a32d2d; }
+
+    /* Action area bên phải */
+    .patient-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 140px; }
+    .btn-action { height: 30px; padding: 0 12px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .btn-kham { background: #d4edda; color: #155724; border-color: #b8ddc4; }
+    .btn-kham:hover { background: #155724; color: #fff; }
+    .btn-diag { background: #0a4d7c; color: #fff; border-color: #0a4d7c; }
+    .btn-diag:hover { background: #1a6fa8; }
+
+    /* Panel ghi chuẩn đoán (inline dưới card) */
+    .diag-panel { display: none; margin-top: 12px; background: #f8fbff; border: 1px solid #d4e8f5; border-radius: 10px; padding: 16px; }
+    .diag-panel.open { display: block; }
+    .diag-label { font-size: 11px; font-weight: 500; color: #3a5a72; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; display: block; }
+    .diag-input { width: 100%; border: 1px solid #d4e8f5; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #0d2d44; outline: none; font-family: 'DM Sans', sans-serif; resize: vertical; min-height: 70px; box-sizing: border-box; }
+    .diag-input:focus { border-color: #1a6fa8; }
+    .diag-footer { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+    .btn-save-diag { height: 32px; padding: 0 16px; background: #0a4d7c; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .btn-save-diag:hover { background: #1a6fa8; }
+    .btn-cancel-diag { height: 32px; padding: 0 14px; background: #f5f5f5; color: #555; border: none; border-radius: 7px; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .diag-existing { font-size: 12px; color: #2d7a52; background: #f0faf4; border-left: 3px solid #2d7a52; padding: 6px 10px; border-radius: 0 6px 6px 0; margin-bottom: 8px; }
+
+    .empty-state { text-align: center; padding: 48px 20px; color: #7a9bb0; font-size: 13px; background: #fff; border: 1px solid #d4e8f5; border-radius: 14px; }
+    .msg-ok  { font-size: 12px; color: #2d7a52; margin-top: 6px; }
+    .msg-err { font-size: 12px; color: #c0392b; margin-top: 6px; }
+</style>
+
+<div class="doc-wrap">
+    <div class="page-header">
+        <div>
+            <div class="page-title">Lịch khám của tôi</div>
+            <div class="page-sub">BS. @ViewBag.UserName — Phòng khám Tai Mũi Họng</div>
+        </div>
+    </div>
+
+    <!-- Toolbar chọn ngày -->
+    <div class="toolbar">
+        <label>Ngày khám</label>
+        <input type="date" id="filterDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        <button class="btn-load" onclick="loadSchedule()">Xem lịch</button>
+        <span style="margin-left:auto;font-size:13px;color:#7a9bb0;">@ViewBag.TodayDate</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat-card total"><div class="stat-num" id="statTotal">@Model.Count</div><div class="stat-lbl">Tổng lịch</div></div>
+        <div class="stat-card den">  <div class="stat-num" id="statDen">@Model.Count(a => a.Status == "DaDen")</div><div class="stat-lbl">Đã đến</div></div>
+        <div class="stat-card kham"> <div class="stat-num" id="statKham">@Model.Count(a => a.Status == "DangKham")</div><div class="stat-lbl">Đang khám</div></div>
+        <div class="stat-card hoan"> <div class="stat-num" id="statHoan">@Model.Count(a => a.Status == "HoanThanh")</div><div class="stat-lbl">Hoàn thành</div></div>
+    </div>
+
+    <!-- Danh sách bệnh nhân -->
+    <div class="patient-list" id="patientList">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">Không có lịch khám nào hôm nay</div>
+        }
+        else
+        {
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                var a = Model[i];
+                var badgeClass = a.Status switch {
+                    "DaDen"     => "badge-den",
+                    "DangKham"  => "badge-kham",
+                    "HoanThanh" => "badge-hoan",
+                    "VangMat"   => "badge-vang",
+                    _           => "badge-cho"
+                };
+                <div class="patient-card" id="card-@a.Id">
+                    <div class="order-num">@(i + 1)</div>
+                    <div class="patient-info">
+                        <div class="patient-name">@a.PatientName</div>
+                        <div class="patient-meta">
+                            <span>🕐 @a.StartTime – @a.EndTime</span>
+                            <span class="booking-code">@a.BookingCode</span>
+                            <span><span class="badge @badgeClass" id="badge-@a.Id">@a.StatusDisplay</span></span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(a.Note))
+                        {
+                            <div class="patient-note">📝 @a.Note</div>
+                        }
+                        @if (!string.IsNullOrEmpty(a.Diagnosis))
+                        {
+                            <div class="diag-existing">🩺 Chuẩn đoán: @a.Diagnosis</div>
+                        }
+                        <!-- Panel ghi chuẩn đoán -->
+                        <div class="diag-panel" id="diag-@a.Id">
+                            <label class="diag-label">Chuẩn đoán bệnh</label>
+                            <textarea class="diag-input" id="diagText-@a.Id"
+                                placeholder="Nhập chuẩn đoán, phác đồ điều trị...">@a.Diagnosis</textarea>
+                            <div class="diag-footer">
+                                <button class="btn-cancel-diag" onclick="closeDiag(@a.Id)">Đóng</button>
+                                <button class="btn-save-diag" onclick="saveDiag(@a.Id, 'DangKham')">Lưu chuẩn đoán</button>
+                                <button class="btn-save-diag" style="background:#2d7a52" onclick="saveDiag(@a.Id, 'HoanThanh')">Lưu & Hoàn thành</button>
+                            </div>
+                            <div id="diagMsg-@a.Id"></div>
+                        </div>
+                    </div>
+                    <div class="patient-actions">
+                        @if (a.Status == "DaDen" || a.Status == "DangKham")
+                        {
+                            <button class="btn-action btn-diag" onclick="openDiag(@a.Id)">Ghi chuẩn đoán</button>
+                        }
+                        @if (a.Status == "DaDen")
+                        {
+                            <button class="btn-action btn-kham" onclick="startExam(@a.Id)">Bắt đầu khám</button>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
 </div>
+
+@section Scripts {
+<script>
+    var csrfToken = '@Html.AntiForgeryToken()'.match(/value="([^"]+)"/)?.[1] || '';
+
+    function loadSchedule() {
+        var date = document.getElementById('filterDate').value;
+        if (!date) return;
+        fetch('/Doctor/GetAppointments?date=' + date)
+            .then(function(r) { return r.json(); })
+            .then(function(data) { renderCards(data); updateStats(data); })
+            .catch(function() { alert('Lỗi kết nối'); });
+    }
+
+    function renderCards(data) {
+        var list = document.getElementById('patientList');
+        if (!data.length) {
+            list.innerHTML = '<div class="empty-state">Không có lịch khám nào trong ngày này</div>';
+            return;
+        }
+        var badgeMap = {
+            'DaDen':'badge-den','DangKham':'badge-kham','HoanThanh':'badge-hoan',
+            'VangMat':'badge-vang','ChoXacNhan':'badge-cho','DaXacNhan':'badge-cho'
+        };
+        list.innerHTML = data.map(function(a, i) {
+            var bc = badgeMap[a.status] || 'badge-cho';
+            var noteHtml = a.note ? '<div class="patient-note">📝 ' + a.note + '</div>' : '';
+            var diagHtml = a.diagnosis ? '<div class="diag-existing">🩺 Chuẩn đoán: ' + a.diagnosis + '</div>' : '';
+            var actionBtns = '';
+            if (a.status === 'DaDen' || a.status === 'DangKham')
+                actionBtns += '<button class="btn-action btn-diag" onclick="openDiag(' + a.id + ')">Ghi chuẩn đoán</button>';
+            if (a.status === 'DaDen')
+                actionBtns += '<button class="btn-action btn-kham" onclick="startExam(' + a.id + ')">Bắt đầu khám</button>';
+
+            return '<div class="patient-card" id="card-' + a.id + '">' +
+                '<div class="order-num">' + (i+1) + '</div>' +
+                '<div class="patient-info">' +
+                    '<div class="patient-name">' + a.patientName + '</div>' +
+                    '<div class="patient-meta">' +
+                        '<span>🕐 ' + a.startTime + ' – ' + a.endTime + '</span>' +
+                        '<span class="booking-code">' + a.bookingCode + '</span>' +
+                        '<span><span class="badge ' + bc + '" id="badge-' + a.id + '">' + a.statusDisplay + '</span></span>' +
+                    '</div>' +
+                    noteHtml + diagHtml +
+                    '<div class="diag-panel" id="diag-' + a.id + '">' +
+                        '<label class="diag-label">Chuẩn đoán bệnh</label>' +
+                        '<textarea class="diag-input" id="diagText-' + a.id + '" placeholder="Nhập chuẩn đoán...">' + (a.diagnosis || '') + '</textarea>' +
+                        '<div class="diag-footer">' +
+                            '<button class="btn-cancel-diag" onclick="closeDiag(' + a.id + ')">Đóng</button>' +
+                            '<button class="btn-save-diag" onclick="saveDiag(' + a.id + ',\'DangKham\')">Lưu chuẩn đoán</button>' +
+                            '<button class="btn-save-diag" style="background:#2d7a52" onclick="saveDiag(' + a.id + ',\'HoanThanh\')">Lưu & Hoàn thành</button>' +
+                        '</div>' +
+                        '<div id="diagMsg-' + a.id + '"></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="patient-actions">' + actionBtns + '</div>' +
+                '</div>';
+        }).join('');
+    }
+
+    function updateStats(data) {
+        document.getElementById('statTotal').textContent = data.length;
+        document.getElementById('statDen').textContent   = data.filter(function(a){ return a.status === 'DaDen'; }).length;
+        document.getElementById('statKham').textContent  = data.filter(function(a){ return a.status === 'DangKham'; }).length;
+        document.getElementById('statHoan').textContent  = data.filter(function(a){ return a.status === 'HoanThanh'; }).length;
+    }
+
+    function openDiag(id) {
+        document.getElementById('diag-' + id).classList.add('open');
+        document.getElementById('diagText-' + id).focus();
+    }
+
+    function closeDiag(id) {
+        document.getElementById('diag-' + id).classList.remove('open');
+    }
+
+    function startExam(id) {
+        postStatus(id, 'DangKham', null, function(ok, msg) {
+            if (ok) loadSchedule();
+            else alert(msg);
+        });
+    }
+
+    function saveDiag(id, newStatus) {
+        var diagnosis = document.getElementById('diagText-' + id).value.trim();
+        var msgEl = document.getElementById('diagMsg-' + id);
+        msgEl.innerHTML = '';
+
+        postStatus(id, newStatus, diagnosis, function(ok, msg) {
+            if (ok) {
+                msgEl.innerHTML = '<div class="msg-ok">✅ ' + msg + '</div>';
+                setTimeout(function() { closeDiag(id); loadSchedule(); }, 1200);
+            } else {
+                msgEl.innerHTML = '<div class="msg-err">❌ ' + msg + '</div>';
+            }
+        });
+    }
+
+    function postStatus(id, status, diagnosis, cb) {
+        var body = { appointmentId: id, newStatus: status };
+        if (diagnosis) body.diagnosis = diagnosis;
+
+        fetch('/Doctor/SaveDiagnosis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+            body: JSON.stringify(body)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) { cb(data.success, data.message); })
+        .catch(function() { cb(false, 'Lỗi kết nối'); });
+    }
+</script>
+}
