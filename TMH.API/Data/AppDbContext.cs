@@ -15,6 +15,7 @@ namespace TMH.API.Data
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Payment> Payments { get; set; }
+        public DbSet<Article> Articles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -167,6 +168,23 @@ namespace TMH.API.Data
             // ══════════════════════════════════════════════════
             var pw = "$2a$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
             var d0 = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+
+            modelBuilder.Entity<Article>(e =>
+            {
+                e.HasKey(a => a.Id);
+                e.Property(a => a.Title).HasMaxLength(200).IsRequired();
+                e.Property(a => a.Slug).HasMaxLength(220).IsRequired();
+                e.Property(a => a.Summary).HasMaxLength(500).IsRequired();
+                e.Property(a => a.Content).IsRequired();
+                e.Property(a => a.Category).HasMaxLength(100).IsRequired();
+                e.Property(a => a.Thumbnail).HasMaxLength(500);
+                e.Property(a => a.Status).HasConversion<int>();
+                e.HasOne(a => a.Doctor)
+                 .WithMany()
+                 .HasForeignKey(a => a.DoctorId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
 
             modelBuilder.Entity<User>().HasData(
                 new User { Id = 1, HoTenDem = "Nguyễn Văn", Ten = "Admin", Username = "admin", Email = "admin@pktatmuihong.vn", Phone = "0901000001", PasswordHash = pw, Role = UserRole.Admin, IsActive = true, IsEmailVerified = true, CreatedAt = d0 },

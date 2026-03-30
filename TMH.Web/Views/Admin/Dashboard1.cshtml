@@ -72,7 +72,6 @@
         <button class="tab-btn" onclick="switchTab('doctors', this)">Bác sĩ</button>
         <button class="tab-btn" onclick="switchTab('stats', this)">Thống kê</button>
         <button class="tab-btn" onclick="switchTab('schedule', this)">Lịch làm việc</button>
-        <button class="tab-btn" onclick="switchTab('articles', this)">Bài viết</button>
     </div>
 
     <!-- Tab: Tổng quan -->
@@ -236,14 +235,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Tab: Bài viết -->
-    <div class="tab-pane" id="tab-articles">
-        <div class="data-table-wrap" id="articlesTable">
-            <div class="loading-text">Đang tải...</div>
-        </div>
-    </div>
-
 </div>
 
 @section Scripts {
@@ -269,7 +260,6 @@ function loadTab(name) {
     else if (name === 'doctors')  loadDoctors();
     else if (name === 'stats')    loadStats();
     else if (name === 'schedule') initScheduleTab();
-    else if (name === 'articles') loadAllArticles();
 }
 
 // ── Overview ──────────────────────────────────────────────────────
@@ -602,14 +592,31 @@ function removeShift(id) {
 
 function renderShifts() {
     var html = shifts.map(function(s) {
-        return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;" id="shift-row-' + s.id + '">' +
-            '<input type="time" value="' + s.start + '" onchange="updateShift(' + s.id + ','start',this.value)" ' +
-            'style="height:34px;border:1px solid #d4e8f5;border-radius:7px;padding:0 10px;font-size:13px;outline:none;" />' +
-            '<span style="font-size:12px;color:#7a9bb0;">–</span>' +
-            '<input type="time" value="' + s.end + '" onchange="updateShift(' + s.id + ','end',this.value)" ' +
-            'style="height:34px;border:1px solid #d4e8f5;border-radius:7px;padding:0 10px;font-size:13px;outline:none;" />' +
-            '<button onclick="removeShift(' + s.id + ')" style="height:30px;width:30px;border-radius:6px;border:1px solid #f5c6c6;background:#fdecea;color:#c0392b;cursor:pointer;font-size:14px;">×</button>' +
-            '</div>';
+        var row = document.createElement('div');
+        row.id = 'shift-row-' + s.id;
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+
+        var inp1 = document.createElement('input');
+        inp1.type = 'time'; inp1.value = s.start;
+        inp1.style.cssText = 'height:34px;border:1px solid #d4e8f5;border-radius:7px;padding:0 10px;font-size:13px;outline:none;';
+        inp1.addEventListener('change', function(){ updateShift(s.id, 'start', this.value); });
+
+        var sep = document.createElement('span');
+        sep.style.cssText = 'font-size:12px;color:#7a9bb0;'; sep.textContent = '–';
+
+        var inp2 = document.createElement('input');
+        inp2.type = 'time'; inp2.value = s.end;
+        inp2.style.cssText = 'height:34px;border:1px solid #d4e8f5;border-radius:7px;padding:0 10px;font-size:13px;outline:none;';
+        inp2.addEventListener('change', function(){ updateShift(s.id, 'end', this.value); });
+
+        var btn = document.createElement('button');
+        btn.textContent = '×';
+        btn.style.cssText = 'height:30px;width:30px;border-radius:6px;border:1px solid #f5c6c6;background:#fdecea;color:#c0392b;cursor:pointer;font-size:14px;';
+        btn.addEventListener('click', function(){ removeShift(s.id); });
+
+        row.appendChild(inp1); row.appendChild(sep);
+        row.appendChild(inp2); row.appendChild(btn);
+        return row.outerHTML;
     }).join('');
     if (!html) html = '<div style="font-size:12px;color:#7a9bb0;padding:8px 0;">Chưa có ca nào. Bấm "+ Thêm ca" để thêm.</div>';
     document.getElementById('shiftList').innerHTML = html;
@@ -706,62 +713,6 @@ function deleteSchedule(id) {
     .then(function(r){ return r.json(); })
     .then(function(data) {
         if (data.success) loadSchedules();
-        else alert(data.message);
-    });
-}
-
-// ── Articles (Admin) ─────────────────────────────────────────────
-function loadAllArticles() {
-    document.getElementById('articlesTable').innerHTML = '<div class="loading-text">Đang tải...</div>';
-    fetch('/Admin/GetAllArticles')
-        .then(function(r){ return r.json(); })
-        .then(function(data) {
-            if (!data.length) {
-                document.getElementById('articlesTable').innerHTML = '<div class="loading-text">Chưa có bài viết nào.</div>';
-                return;
-            }
-            var html = '<table class="data-table"><thead><tr>' +
-                '<th>Tiêu đề</th><th>Tác giả</th><th>Chủ đề</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th>' +
-                '</tr></thead><tbody>' +
-                data.map(function(a) {
-                    var badge = a.statusDisplay === 'Đã đăng'
-                        ? '<span class="badge badge-active">Đã đăng</span>'
-                        : '<span class="badge badge-locked">Nháp</span>';
-                    var btnLabel = a.statusDisplay === 'Đã đăng' ? 'Gỡ bài' : 'Duyệt đăng';
-                    return '<tr>' +
-                        '<td><strong>' + a.title + '</strong></td>' +
-                        '<td>' + a.authorName + '</td>' +
-                        '<td>' + a.category + '</td>' +
-                        '<td>' + badge + '</td>' +
-                        '<td>' + new Date(a.createdAt).toLocaleDateString('vi-VN') + '</td>' +
-                        '<td style="display:flex;gap:6px;">' +
-                            '<button class="btn-toggle" onclick="toggleArticle(' + a.id + ', this)">' + btnLabel + '</button>' +
-                            '<button class="btn-toggle danger" onclick="adminDeleteArticle(' + a.id + ')">Xóa</button>' +
-                        '</td></tr>';
-                }).join('') + '</tbody></table>';
-            document.getElementById('articlesTable').innerHTML = html;
-        });
-}
-
-function toggleArticle(id, btn) {
-    fetch('/Admin/ToggleArticleStatus?id=' + id, {
-        method: 'POST', headers: { 'RequestVerificationToken': csrfToken }
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-        if (data.success) { tabLoaded['articles'] = false; loadAllArticles(); }
-        else alert(data.message);
-    });
-}
-
-function adminDeleteArticle(id) {
-    if (!confirm('Xác nhận xóa bài viết này?')) return;
-    fetch('/Admin/AdminDeleteArticle?id=' + id, {
-        method: 'POST', headers: { 'RequestVerificationToken': csrfToken }
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-        if (data.success) loadAllArticles();
         else alert(data.message);
     });
 }

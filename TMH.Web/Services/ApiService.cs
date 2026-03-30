@@ -68,13 +68,22 @@ namespace TMH.Web.Services
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<T>(responseJson, _jsonOpts);
+            if (string.IsNullOrWhiteSpace(responseJson)) return default;
+            try
+            {
+                return JsonSerializer.Deserialize<T>(responseJson, _jsonOpts);
+            }
+            catch (JsonException ex)
+            {
+                Console.Error.WriteLine($"[ApiService] PostAsync deserialize lỗi: {ex.Message} | Response: {responseJson}");
+                return default;
+            }
         }
 
         // =====================================================================
         // HELPER: GET chung — dùng cho các endpoint lấy dữ liệu
         // =====================================================================
-        // Trả về raw JSON string — dùng cho Admin forward, tránh mất key name khi re-serialize
+        // Trả về raw JSON string — dùng cho Admin/Doctor forward, tránh mất key name khi re-serialize
         public async Task<string?> GetRawJsonAsync(string endpoint)
         {
             AttachToken();
@@ -86,6 +95,57 @@ namespace TMH.Web.Services
             }
             catch (HttpRequestException)
             {
+                return null;
+            }
+        }
+
+                // POST và trả về raw JSON string — tránh mất dữ liệu khi re-serialize
+        public async Task<string?> PostRawJsonAsync(string endpoint, object body)
+        {
+            AttachToken();
+            var json    = JsonSerializer.Serialize(body);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            try
+            {
+                var response = await _http.PostAsync(endpoint, content);
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"[ApiService] PostRawJsonAsync lỗi: {ex.Message}");
+                return null;
+            }
+        }
+
+        // PUT và trả về raw JSON string
+        public async Task<string?> PutRawJsonAsync(string endpoint, object body)
+        {
+            AttachToken();
+            var json    = JsonSerializer.Serialize(body);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            try
+            {
+                var response = await _http.PutAsync(endpoint, content);
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"[ApiService] PutRawJsonAsync lỗi: {ex.Message}");
+                return null;
+            }
+        }
+
+                public async Task<string?> DeleteRawJsonAsync(string endpoint)
+        {
+            AttachToken();
+            try
+            {
+                var response = await _http.DeleteAsync(endpoint);
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.Error.WriteLine($"[ApiService] DeleteRawJsonAsync lỗi: {ex.Message}");
                 return null;
             }
         }

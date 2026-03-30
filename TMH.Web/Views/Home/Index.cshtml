@@ -815,30 +815,87 @@
     <div class="section-tag">Tin tức y tế</div>
     <div class="section-title">Kiến thức Tai · Mũi · Họng</div>
     <div class="section-sub">Thông tin chuyên sâu từ đội ngũ bác sĩ TMH của chúng tôi</div>
-    <div class="news-grid">
-        <div class="news-card">
-            <div class="news-img" style="background:linear-gradient(135deg,#e8f4fd,#d4ecf9)">🤧</div>
+    <div class="news-grid" id="homeNewsGrid">
+        <!-- Skeleton loading -->
+        <div class="news-card" style="opacity:.4">
+            <div class="news-img" style="background:#f0f8ff"></div>
             <div class="news-body">
-                <div class="news-cat">Viêm xoang</div>
-                <div class="news-title">Viêm xoang mãn tính — Khi nào cần phẫu thuật nội soi?</div>
-                <div class="news-meta">TS.BS. Nguyễn Thanh Vân · 12/03/2026</div>
+                <div style="height:10px;background:#e0edf5;border-radius:4px;width:60%;margin-bottom:8px"></div>
+                <div style="height:13px;background:#e0edf5;border-radius:4px;margin-bottom:6px"></div>
+                <div style="height:11px;background:#e0edf5;border-radius:4px;width:70%"></div>
             </div>
         </div>
-        <div class="news-card">
-            <div class="news-img" style="background:linear-gradient(135deg,#fdf3d7,#fde8b0)">👂</div>
+        <div class="news-card" style="opacity:.4">
+            <div class="news-img" style="background:#fff8e8"></div>
             <div class="news-body">
-                <div class="news-cat">Thính học</div>
-                <div class="news-title">Nhận biết sớm giảm thính lực ở trẻ — Cha mẹ cần biết gì?</div>
-                <div class="news-meta">PGS.BS. Trần Minh Linh · 09/03/2026</div>
+                <div style="height:10px;background:#f0e8c8;border-radius:4px;width:60%;margin-bottom:8px"></div>
+                <div style="height:13px;background:#f0e8c8;border-radius:4px;margin-bottom:6px"></div>
+                <div style="height:11px;background:#f0e8c8;border-radius:4px;width:70%"></div>
             </div>
         </div>
-        <div class="news-card">
-            <div class="news-img" style="background:linear-gradient(135deg,#e6f7ef,#c9f0d8)">😴</div>
+        <div class="news-card" style="opacity:.4">
+            <div class="news-img" style="background:#f0fff4"></div>
             <div class="news-body">
-                <div class="news-cat">Họng — Thanh quản</div>
-                <div class="news-title">Ngáy ngủ có phải bệnh? Mối liên hệ với ngưng thở khi ngủ</div>
-                <div class="news-meta">TS.BS. Phạm Thị Hương · 06/03/2026</div>
+                <div style="height:10px;background:#c8e8d0;border-radius:4px;width:60%;margin-bottom:8px"></div>
+                <div style="height:13px;background:#c8e8d0;border-radius:4px;margin-bottom:6px"></div>
+                <div style="height:11px;background:#c8e8d0;border-radius:4px;width:70%"></div>
             </div>
         </div>
     </div>
+    <div style="text-align:center;margin-top:24px;">
+        <a href="/News" style="display:inline-block;padding:10px 28px;border:1.5px solid #0a4d7c;border-radius:8px;color:#0a4d7c;font-size:13px;font-weight:500;text-decoration:none;font-family:'DM Sans',sans-serif;transition:all .15s;"
+           onmouseover="this.style.background='#0a4d7c';this.style.color='#fff'"
+           onmouseout="this.style.background='';this.style.color='#0a4d7c'">
+            Xem tất cả bài viết →
+        </a>
+    </div>
 </section>
+
+@{
+    var articlesJson = ViewBag.ArticlesJson as string ?? "[]";
+}
+<script>
+(function() {
+    var bgColors = [
+        'linear-gradient(135deg,#e8f4fd,#d4ecf9)',
+        'linear-gradient(135deg,#fdf3d7,#fde8b0)',
+        'linear-gradient(135deg,#e6f7ef,#c9f0d8)',
+        'linear-gradient(135deg,#fdecea,#f9c9c9)',
+        'linear-gradient(135deg,#f3e8fd,#e4c9f9)'
+    ];
+    var catIcons = {
+        'Viem xoang':'🤧','Thinh hoc':'👂','Hong — Thanh quan':'😴',
+        'TMH Nhi':'👶','Phau thuat noi soi':'🔬','Phong ngua':'💊','Khac':'📋'
+    };
+    function getIcon(cat) {
+        var map = {'Viêm xoang':'🤧','Thính học':'👂','Hồng — Thanh quản':'😴','TMH Nhi':'👶','Phẫu thuật nội soi':'🔬','Phòng ngừa':'💊'};
+        return map[cat] || '📋';
+    }
+    try {
+        var articles = @Html.Raw(articlesJson);
+        var grid = document.getElementById('homeNewsGrid');
+        if (!Array.isArray(articles) || !articles.length) {
+            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;text-align:center;grid-column:1/-1">Chưa có bài viết nào.</p>';
+            return;
+        }
+        grid.innerHTML = articles.map(function(a, i) {
+            var bg  = bgColors[i % bgColors.length];
+            var ico = getIcon(a.category);
+            var date = a.publishedAt ? new Date(a.publishedAt).toLocaleDateString('vi-VN') : '';
+            var imgDiv = a.thumbnail
+                ? '<div class="news-img" style="background:' + bg + ';padding:0;overflow:hidden"><img src="' + a.thumbnail + '" style="width:100%;height:100%;object-fit:cover" /></div>'
+                : '<div class="news-img" style="background:' + bg + '">' + ico + '</div>';
+            return '<a href="/News/Detail/' + a.id + '" style="text-decoration:none">' +
+                '<div class="news-card">' + imgDiv +
+                    '<div class="news-body">' +
+                        '<div class="news-cat">' + (a.category||'') + '</div>' +
+                        '<div class="news-title">' + (a.title||'') + '</div>' +
+                        '<div class="news-meta">' + (a.authorName||'') + (date?' · '+date:'') + '</div>' +
+                    '</div>' +
+                '</div></a>';
+        }).join('');
+    } catch(e) {
+        console.error('News render error:', e);
+    }
+})();
+</script>

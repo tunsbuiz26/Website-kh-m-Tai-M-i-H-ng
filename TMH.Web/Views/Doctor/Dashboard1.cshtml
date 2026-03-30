@@ -224,17 +224,8 @@
                 </select>
             </div>
             <div class="editor-form-group">
-                <label class="editor-label">Ảnh thumbnail</label>
-                <div style="border:1.5px dashed #d4e8f5;border-radius:8px;padding:10px;text-align:center;cursor:pointer;background:#fafcff;" onclick="document.getElementById('artImageFile').click()">
-                    <img id="thumbPreview" src="" alt="" style="max-width:100%;max-height:100px;border-radius:6px;display:none;margin-bottom:6px;" />
-                    <div id="thumbPlaceholder" style="font-size:12px;color:#7a9bb0;padding:6px 0;">
-                        🖼 Bấm để chọn ảnh<br><small>JPG, PNG, WebP — tối đa 5MB</small>
-                    </div>
-                    <input type="file" id="artImageFile" accept="image/*" style="display:none" onchange="previewAndUpload(this)" />
-                </div>
-                <input type="hidden" id="artThumbnail" />
-                <div id="uploadProgress" style="font-size:11px;color:#7a9bb0;margin-top:4px;display:none;">Đang tải lên...</div>
-                <div id="uploadErr" style="font-size:11px;color:#c0392b;margin-top:4px;display:none;"></div>
+                <label class="editor-label">URL ảnh thumbnail</label>
+                <input class="editor-input" id="artThumbnail" placeholder="https://..." />
             </div>
         </div>
 
@@ -409,11 +400,6 @@
         document.getElementById('artThumbnail').value = '';
         document.getElementById('artSummary').value   = '';
         document.getElementById('artContent').value   = '';
-        document.getElementById('artImageFile').value = '';
-        document.getElementById('thumbPreview').src   = '';
-        document.getElementById('thumbPreview').style.display    = 'none';
-        document.getElementById('thumbPlaceholder').style.display = 'block';
-        document.getElementById('uploadErr').style.display        = 'none';
 
         if (id) {
             fetch('/Doctor/GetArticleDetail?id=' + id)
@@ -424,60 +410,9 @@
                     document.getElementById('artThumbnail').value = a.thumbnail || '';
                     document.getElementById('artSummary').value   = a.summary   || '';
                     document.getElementById('artContent').value   = a.content   || '';
-                    if (a.thumbnail) {
-                        document.getElementById('thumbPreview').src          = a.thumbnail;
-                        document.getElementById('thumbPreview').style.display    = 'block';
-                        document.getElementById('thumbPlaceholder').style.display = 'none';
-                    }
                 });
         }
         document.getElementById('editorModal').classList.add('open');
-    }
-
-    function previewAndUpload(input) {
-        var file = input.files[0];
-        if (!file) return;
-
-        // Preview ngay
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            var preview = document.getElementById('thumbPreview');
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            document.getElementById('thumbPlaceholder').style.display = 'none';
-        };
-        reader.readAsDataURL(file);
-
-        // Upload lên server
-        document.getElementById('uploadProgress').style.display = 'block';
-        document.getElementById('uploadErr').style.display = 'none';
-
-        var formData = new FormData();
-        formData.append('file', file);
-
-        fetch('/Doctor/UploadArticleImage', {
-            method: 'POST',
-            headers: { 'RequestVerificationToken': csrfToken },
-            body: formData
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(data) {
-            document.getElementById('uploadProgress').style.display = 'none';
-            if (data.success) {
-                document.getElementById('artThumbnail').value = data.url;
-            } else {
-                document.getElementById('uploadErr').textContent = data.message;
-                document.getElementById('uploadErr').style.display = 'block';
-                // Reset preview
-                document.getElementById('thumbPreview').style.display = 'none';
-                document.getElementById('thumbPlaceholder').style.display = 'block';
-            }
-        })
-        .catch(function() {
-            document.getElementById('uploadProgress').style.display = 'none';
-            document.getElementById('uploadErr').textContent = 'Lỗi kết nối khi tải ảnh.';
-            document.getElementById('uploadErr').style.display = 'block';
-        });
     }
 
     function closeEditor() { document.getElementById('editorModal').classList.remove('open'); }

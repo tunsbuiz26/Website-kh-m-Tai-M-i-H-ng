@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using TMH.Shared.DTOs;
 using TMH.Web.Services;
@@ -86,6 +87,83 @@ namespace TMH.Web.Controllers
             var result = await _api.UpdateAppointmentStatusAsync(dto);
             return Json(result);
         }
+
+        // ── Bài viết ─────────────────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetMyArticles()
+        {
+            if (!IsDoctor()) return Unauthorized();
+            return await ForwardDocJson("api/article/my");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetArticleDetail(int id)
+        {
+            if (!IsDoctor()) return Unauthorized();
+            return await ForwardDocJson($"api/article/{id}");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateArticle([FromBody] JsonElement dto)
+        {
+            if (!IsDoctor()) return Unauthorized();
+            var raw = await _api.PostRawJsonAsync("api/article", dto);
+            return Content(raw ?? @"{""success"":false,""message"":""Loi server""}", "application/json");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateArticle(int id, [FromBody] JsonElement dto)
+        {
+            if (!IsDoctor()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync($"api/article/{id}", dto);
+            return Content(raw ?? @"{""success"":false,""message"":""Loi server""}", "application/json");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteArticle(int id)
+        {
+            if (!IsDoctor()) return Unauthorized();
+            var raw = await _api.DeleteRawJsonAsync($"api/article/{id}");
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> UploadArticleImage()
+        {
+            if (!IsDoctor()) return Unauthorized();
+            var file = Request.Form.Files.FirstOrDefault();
+            if (file == null) return BadRequest(new { success = false, message = "Không có file." });
+
+            // Lưu file vào wwwroot/uploads/articles/
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+            if (!allowedTypes.Contains(file.ContentType.ToLower()))
+                return BadRequest(new { success = false, message = "Chỉ chấp nhận ảnh." });
+            if (file.Length > 5 * 1024 * 1024)
+                return BadRequest(new { success = false, message = "Ảnh tối đa 5MB." });
+
+            var env = HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+            var uploadsDir = Path.Combine(env.WebRootPath, "uploads", "articles");
+            Directory.CreateDirectory(uploadsDir);
+
+            var ext      = Path.GetExtension(file.FileName).ToLower();
+            var fileName = Guid.NewGuid().ToString("N") + ext;
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await file.CopyToAsync(stream);
+
+            return Json(new { success = true, url = "/uploads/articles/" + fileName });
+        }
+
+        private async Task<ContentResult> ForwardDocJson(string endpoint)
+        {
+            var raw = await _api.GetRawJsonAsync(endpoint);
+            return Content(raw ?? "[]", "application/json");
+        }
     }
 
     // ----------------------------------------------------------------
@@ -161,47 +239,45 @@ namespace TMH.Web.Controllers
             return View();
         }
 
-        // Forward raw JSON string từ API về browser — giữ nguyên key name
-        private async Task<ContentResult> ForwardJson(string apiEndpoint)
-        {
-            var raw = await _api.GetRawJsonAsync(apiEndpoint);
-            return Content(raw ?? "{}", "application/json");
-        }
-
         // AJAX endpoints cho Admin dashboard
         [HttpGet]
         public async Task<IActionResult> GetStats()
         {
             if (!IsAdmin()) return Unauthorized();
-            return await ForwardJson("api/admin/stats");
+            var data = await _api.GetAsync<object>("api/admin/stats");
+            return Json(data);
         }
 
         [HttpGet]
         public async Task<IActionResult> GetWeeklyStats()
         {
             if (!IsAdmin()) return Unauthorized();
-            return await ForwardJson("api/admin/stats/weekly");
+            var data = await _api.GetAsync<object>("api/admin/stats/weekly");
+            return Json(data);
         }
 
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
             if (!IsAdmin()) return Unauthorized();
-            return await ForwardJson("api/admin/users");
+            var data = await _api.GetAsync<object>("api/admin/users");
+            return Json(data);
         }
 
         [HttpGet]
         public async Task<IActionResult> GetDoctors()
         {
             if (!IsAdmin()) return Unauthorized();
-            return await ForwardJson("api/admin/doctors");
+            var data = await _api.GetAsync<object>("api/admin/doctors");
+            return Json(data);
         }
 
         [HttpGet]
         public async Task<IActionResult> GetStatsByDoctor()
         {
             if (!IsAdmin()) return Unauthorized();
-            return await ForwardJson("api/admin/stats/by-doctor");
+            var data = await _api.GetAsync<object>("api/admin/stats/by-doctor");
+            return Json(data);
         }
 
         [HttpPost]
@@ -231,7 +307,8 @@ namespace TMH.Web.Controllers
             if (doctorId.HasValue) url += $"doctorId={doctorId}&";
             if (!string.IsNullOrEmpty(from)) url += $"from={from}&";
             if (!string.IsNullOrEmpty(to))   url += $"to={to}&";
-            return await ForwardJson(url.TrimEnd('?', '&'));
+            var data = await _api.GetAsync<object>(url.TrimEnd('?', '&'));
+            return Json(data);
         }
 
         [HttpPost]
@@ -259,6 +336,33 @@ namespace TMH.Web.Controllers
             if (!IsAdmin()) return Unauthorized();
             var data = await _api.PostPublicAsync<object>("api/admin/schedules/batch", dto);
             return Json(data);
+        }
+
+        // ── Bài viết (Admin duyệt) ────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetAllArticles()
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var raw = await _api.GetRawJsonAsync("api/article/all");
+            return Content(raw ?? "[]", "application/json");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleArticleStatus(int id)
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync($"api/article/{id}/toggle-status", new { });
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminDeleteArticle(int id)
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var raw = await _api.DeleteRawJsonAsync($"api/article/{id}");
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
     }
 }

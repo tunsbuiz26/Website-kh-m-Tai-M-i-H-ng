@@ -60,7 +60,7 @@
             </a>
             <a href="#dich-vu" class="nav-link">Dịch vụ</a>
             <a href="#bac-si" class="nav-link">Bác sĩ</a>
-            <a href="#tin-tuc" class="nav-link">Tin tức</a>
+            <a href="@(Context.Request.Path == "/" ? "#tin-tuc" : "/News")" class="nav-link">Tin tức</a>
             <a asp-controller="Home" asp-action="Contact" class="nav-link">Liên hệ</a>
         </div>
 
@@ -208,247 +208,433 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 
-    <!-- ===== CHATBOT BUBBLE ===== -->
+    <!-- ===== CHATBOT FLOATING WIDGET ===== -->
     <style>
+        /* --- Nút bubble --- */
         @@keyframes chatPulse {
-            0%,100%
-
-        {
-            box-shadow: 0 0 0 0 rgba(10,77,124,0.4);
+            0%, 100% { box-shadow: 0 0 0 0 rgba(14,116,144,0.45); }
+            50%       { box-shadow: 0 0 0 10px rgba(14,116,144,0); }
+        }
+        @@keyframes tmhFadeUp {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @@keyframes tmhTyping {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30%            { transform: translateY(-5px); opacity: 1; }
         }
 
-        50% {
-            box-shadow: 0 0 0 10px rgba(10,77,124,0);
-        }
-
-        }
-
-        .chat-bubble {
+        .tmh-bubble {
             position: fixed;
-            bottom: 28px;
-            right: 28px;
+            bottom: 28px; right: 28px;
             z-index: 9999;
-            width: 54px;
-            height: 54px;
+            width: 56px; height: 56px;
             border-radius: 50%;
-            background: #0a4d7c;
+            background: linear-gradient(135deg, #0e7490, #0891b2);
             color: #fff;
             border: none;
-            font-size: 22px;
+            font-size: 24px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 18px rgba(14,116,144,0.4);
             animation: chatPulse 2.5s ease-in-out infinite;
             transition: transform .15s;
         }
+        .tmh-bubble:hover { transform: scale(1.08); }
 
-            .chat-bubble:hover {
-                transform: scale(1.08);
-            }
+        /* Badge số tin chưa đọc */
+        .tmh-badge {
+            position: absolute;
+            top: -2px; right: -2px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            display: none;
+            align-items: center; justify-content: center;
+            border: 2px solid #fff;
+        }
+        .tmh-badge.show { display: flex; }
 
-        .chat-window {
+        /* --- Cửa sổ chat --- */
+        .tmh-window {
             position: fixed;
-            bottom: 94px;
-            right: 28px;
+            bottom: 96px; right: 28px;
             z-index: 9998;
-            width: 340px;
-            max-height: 480px;
+            width: 360px;
+            max-height: 540px;
             background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(14,116,144,0.2), 0 2px 8px rgba(0,0,0,0.08);
             display: none;
             flex-direction: column;
             overflow: hidden;
+            font-family: 'DM Sans', sans-serif;
         }
-
-            .chat-window.open {
-                display: flex;
-            }
-
-        .chat-head {
-            background: #0a4d7c;
-            color: #fff;
-            padding: 14px 18px;
-            font-size: 14px;
-            font-weight: 500;
+        .tmh-window.open {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            animation: tmhFadeUp 0.22s ease-out;
         }
 
-        .chat-head-dot {
-            width: 8px;
-            height: 8px;
-            background: #22c55e;
+        /* Header */
+        .tmh-head {
+            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+            padding: 14px 18px;
+            display: flex; align-items: center; gap: 10px;
+            flex-shrink: 0;
+        }
+        .tmh-head-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,0.18);
             border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px;
+            border: 1.5px solid rgba(255,255,255,0.3);
         }
-
-        .chat-close {
-            margin-left: auto;
-            background: none;
-            border: none;
+        .tmh-head-info { flex: 1; }
+        .tmh-head-info strong {
+            display: block;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .tmh-head-status {
+            color: rgba(255,255,255,0.8);
+            font-size: 11px;
+            display: flex; align-items: center; gap: 4px;
+            margin-top: 1px;
+        }
+        .tmh-head-dot {
+            width: 7px; height: 7px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: chatPulse 2s infinite;
+        }
+        .tmh-close {
+            background: none; border: none;
             color: rgba(255,255,255,0.7);
-            font-size: 20px;
-            cursor: pointer;
-            line-height: 1;
-            padding: 0;
+            font-size: 20px; cursor: pointer;
+            line-height: 1; padding: 2px;
             transition: color .15s;
         }
+        .tmh-close:hover { color: #fff; }
 
-            .chat-close:hover {
-                color: #fff;
-            }
+        /* Quick chips */
+        .tmh-chips {
+            padding: 10px 12px;
+            display: flex; gap: 6px;
+            overflow-x: auto; scrollbar-width: none;
+            background: #f0f9ff;
+            border-bottom: 1px solid #e0f2fe;
+            flex-shrink: 0;
+        }
+        .tmh-chips::-webkit-scrollbar { display: none; }
+        .tmh-chip {
+            white-space: nowrap;
+            background: #fff;
+            border: 1px solid #bae6fd;
+            border-radius: 16px;
+            padding: 4px 10px;
+            font-size: 11.5px;
+            color: #0e7490;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            transition: all .15s;
+        }
+        .tmh-chip:hover { background: #0e7490; color: #fff; border-color: #0e7490; }
 
-        .chat-messages {
+        /* Messages */
+        .tmh-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            padding: 14px 12px;
+            display: flex; flex-direction: column; gap: 10px;
             background: #f8fbff;
+            scroll-behavior: smooth;
         }
+        .tmh-messages::-webkit-scrollbar { width: 3px; }
+        .tmh-messages::-webkit-scrollbar-thumb { background: #bae6fd; border-radius: 3px; }
 
-        .chat-msg {
-            max-width: 82%;
-            font-size: 13px;
-            line-height: 1.5;
+        .tmh-msg {
+            display: flex; gap: 7px;
+            animation: tmhFadeUp 0.2s ease-out;
+        }
+        .tmh-msg.user { flex-direction: row-reverse; }
+
+        .tmh-msg-av {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; flex-shrink: 0;
+            align-self: flex-end;
+        }
+        .tmh-msg.bot .tmh-msg-av  { background: #e0f2fe; }
+        .tmh-msg.user .tmh-msg-av { background: #0e7490; }
+
+        .tmh-bub {
+            max-width: 80%;
             padding: 9px 13px;
-            border-radius: 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .tmh-msg.bot  .tmh-bub { background: #fff; color: #0d2d44; border: 1px solid #dbeafe; border-bottom-left-radius: 4px; }
+        .tmh-msg.user .tmh-bub { background: #0e7490; color: #fff; border-bottom-right-radius: 4px; }
+
+        /* Disclaimer */
+        .tmh-disclaimer {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-size: 11.5px;
+            color: #92400e;
+            line-height: 1.5;
         }
 
-            .chat-msg.bot {
-                background: #fff;
-                border: 1px solid #d4e8f5;
-                color: #0d2d44;
-                align-self: flex-start;
-                border-bottom-left-radius: 4px;
-            }
+        /* Typing dots */
+        .tmh-typing { display: flex; gap: 4px; align-items: center; padding: 3px 2px; }
+        .tmh-typing span {
+            width: 6px; height: 6px;
+            background: #0e7490;
+            border-radius: 50%;
+            animation: tmhTyping 1.2s infinite;
+            opacity: 0.5;
+        }
+        .tmh-typing span:nth-child(2) { animation-delay: 0.2s; }
+        .tmh-typing span:nth-child(3) { animation-delay: 0.4s; }
 
-            .chat-msg.user {
-                background: #0a4d7c;
-                color: #fff;
-                align-self: flex-end;
-                border-bottom-right-radius: 4px;
-            }
-
-            .chat-msg.typing {
-                color: #7a9bb0;
-                font-style: italic;
-            }
-
-        .chat-footer {
+        /* Input */
+        .tmh-footer {
             padding: 10px 12px;
-            border-top: 1px solid #e8f0f7;
-            display: flex;
-            gap: 8px;
-            background: #fff;
+            border-top: 1px solid #e0f2fe;
+            display: flex; gap: 8px; align-items: center;
+            background: #fff; flex-shrink: 0;
         }
-
-        .chat-input {
+        .tmh-input {
             flex: 1;
-            border: 1px solid #d4e8f5;
-            border-radius: 20px;
-            padding: 8px 14px;
+            border: 1.5px solid #bae6fd;
+            border-radius: 14px;
+            padding: 8px 13px;
             font-size: 13px;
             outline: none;
             font-family: 'DM Sans', sans-serif;
             color: #0d2d44;
+            background: #f8fbff;
+            transition: border-color .18s;
         }
-
-            .chat-input:focus {
-                border-color: #1a6fa8;
-            }
-
-        .chat-send {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: #0a4d7c;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background .15s;
+        .tmh-input:focus { border-color: #0e7490; background: #fff; }
+        .tmh-input::placeholder { color: #94a3b8; }
+        .tmh-send {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            background: #0e7490;
+            color: #fff; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .15s; flex-shrink: 0;
         }
+        .tmh-send:hover { background: #0891b2; transform: scale(1.05); }
+        .tmh-send svg { width: 16px; height: 16px; fill: #fff; }
 
-            .chat-send:hover {
-                background: #1a6fa8;
-            }
+        /* Footer note */
+        .tmh-note {
+            text-align: center;
+            font-size: 10.5px;
+            color: #94a3b8;
+            padding: 5px 12px 10px;
+            background: #fff;
+            flex-shrink: 0;
+        }
     </style>
 
-    <button class="chat-bubble" onclick="toggleChat()" title="Hỏi trợ lý AI">💬</button>
+    <!-- Nút bubble -->
+    <button class="tmh-bubble" id="tmhBubble" onclick="tmhToggle()" title="Hỏi trợ lý AI">
+        💬
+        <span class="tmh-badge" id="tmhBadge">1</span>
+    </button>
 
-    <div class="chat-window" id="chatWindow">
-        <div class="chat-head">
-            <div class="chat-head-dot"></div>
-            <span>Trợ lý Phòng Khám TMH</span>
-            <button class="chat-close" onclick="toggleChat()" title="Đóng">✕</button>
+    <!-- Cửa sổ chat -->
+    <div class="tmh-window" id="tmhWindow">
+        <!-- Header -->
+        <div class="tmh-head">
+            <div class="tmh-head-icon">🏥</div>
+            <div class="tmh-head-info">
+                <strong>Trợ Lý TMH AI</strong>
+                <div class="tmh-head-status">
+                    <div class="tmh-head-dot"></div>
+                    <span>Sẵn sàng hỗ trợ</span>
+                </div>
+            </div>
+            <button class="tmh-close" onclick="tmhToggle()" title="Đóng">✕</button>
         </div>
-        <div class="chat-messages" id="chatMessages">
-            <div class="chat-msg bot">
-                Xin chào! Tôi có thể giúp bạn về triệu chứng tai mũi họng, đặt lịch khám, hoặc thông tin phòng khám. Bạn cần hỏi gì?
+
+        <!-- Quick chips -->
+        <div class="tmh-chips">
+            <button class="tmh-chip" onclick="tmhQuick('Giờ làm việc của phòng khám?')">🕐 Giờ mở cửa</button>
+            <button class="tmh-chip" onclick="tmhQuick('Phí khám bao nhiêu?')">💰 Phí khám</button>
+            <button class="tmh-chip" onclick="tmhQuick('Hướng dẫn đặt lịch khám')">📅 Đặt lịch</button>
+            <button class="tmh-chip" onclick="tmhQuick('Tôi bị ù tai phải làm sao?')">👂 Ù tai</button>
+            <button class="tmh-chip" onclick="tmhQuick('Tôi bị viêm xoang nghẹt mũi')">🤧 Viêm xoang</button>
+            <button class="tmh-chip" onclick="tmhQuick('Danh sách bác sĩ phòng khám')">👨‍⚕️ Bác sĩ</button>
+        </div>
+
+        <!-- Messages -->
+        <div class="tmh-messages" id="tmhMessages">
+            <!-- Tin chào + disclaimer -->
+            <div class="tmh-msg bot">
+                <div class="tmh-msg-av">🤖</div>
+                <div>
+                    <div class="tmh-disclaimer">
+                        ⚠️ Trợ lý AI chỉ hỗ trợ tư vấn sơ bộ, không thay thế chẩn đoán y khoa.
+                    </div>
+                </div>
+            </div>
+            <div class="tmh-msg bot">
+                <div class="tmh-msg-av">🤖</div>
+                <div class="tmh-bub">Xin chào! 👋 Tôi có thể giúp bạn về triệu chứng tai mũi họng, hướng dẫn đặt lịch khám, hoặc thông tin phòng khám. Bạn cần hỗ trợ gì?</div>
             </div>
         </div>
-        <div class="chat-footer">
-            <input class="chat-input" id="chatInput" type="text" placeholder="Nhập câu hỏi..." maxlength="500"
-                   onkeydown="if(event.key==='Enter')sendChat()" />
-            <button class="chat-send" onclick="sendChat()">&#10148;</button>
+
+        <!-- Input -->
+        <div class="tmh-footer">
+            <input class="tmh-input" id="tmhInput" type="text"
+                   placeholder="Nhập câu hỏi..." maxlength="500"
+                   onkeydown="if(event.key==='Enter')tmhSend()" />
+            <button class="tmh-send" onclick="tmhSend()" title="Gửi">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+            </button>
         </div>
+        <div class="tmh-note">Powered by Claude AI &nbsp;·&nbsp; Phòng Khám Tai Mũi Họng</div>
     </div>
 
     <script>
-        var chatHistory = [];
-        var chatOpen    = false;
+        var tmhHistory  = [];
+        var tmhIsOpen   = false;
+        var tmhIsBusy   = false;
 
-        function toggleChat() {
-            chatOpen = !chatOpen;
-            document.getElementById('chatWindow').classList.toggle('open', chatOpen);
-            if (chatOpen) document.getElementById('chatInput').focus();
+        // Hiện badge "1" khi trang load để thu hút chú ý
+        setTimeout(function () {
+            var badge = document.getElementById('tmhBadge');
+            if (badge && !tmhIsOpen) badge.classList.add('show');
+        }, 2000);
+
+        function tmhToggle() {
+            tmhIsOpen = !tmhIsOpen;
+            document.getElementById('tmhWindow').classList.toggle('open', tmhIsOpen);
+            if (tmhIsOpen) {
+                // Ẩn badge khi mở
+                document.getElementById('tmhBadge').classList.remove('show');
+                document.getElementById('tmhInput').focus();
+            }
         }
 
-        function sendChat() {
-            var input = document.getElementById('chatInput');
+        function tmhQuick(text) {
+            document.getElementById('tmhInput').value = text;
+            tmhSend();
+        }
+
+        function tmhScrollBottom() {
+            var box = document.getElementById('tmhMessages');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function tmhAppend(role, html) {
+            var box  = document.getElementById('tmhMessages');
+            var wrap = document.createElement('div');
+            wrap.className = 'tmh-msg ' + role;
+
+            var av = document.createElement('div');
+            av.className = 'tmh-msg-av';
+            av.textContent = role === 'bot' ? '🤖' : '🧑';
+
+            var bub = document.createElement('div');
+            bub.className = 'tmh-bub';
+            bub.innerHTML = html;
+
+            wrap.appendChild(av);
+            wrap.appendChild(bub);
+            box.appendChild(wrap);
+            tmhScrollBottom();
+            return bub;
+        }
+
+        function tmhShowTyping() {
+            var box  = document.getElementById('tmhMessages');
+            var wrap = document.createElement('div');
+            wrap.className = 'tmh-msg bot';
+            wrap.id = 'tmhTyping';
+
+            var av = document.createElement('div');
+            av.className = 'tmh-msg-av';
+            av.textContent = '🤖';
+
+            var bub = document.createElement('div');
+            bub.className = 'tmh-bub';
+            bub.innerHTML = '<div class="tmh-typing"><span></span><span></span><span></span></div>';
+
+            wrap.appendChild(av);
+            wrap.appendChild(bub);
+            box.appendChild(wrap);
+            tmhScrollBottom();
+        }
+
+        function tmhRemoveTyping() {
+            var el = document.getElementById('tmhTyping');
+            if (el) el.remove();
+        }
+
+        function tmhFormatText(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function tmhSend() {
+            if (tmhIsBusy) return;
+            var input = document.getElementById('tmhInput');
             var msg   = input.value.trim();
             if (!msg) return;
+
             input.value = '';
+            tmhAppend('user', tmhFormatText(msg));
+            tmhHistory.push({ role: 'user', content: msg });
 
-            appendMsg(msg, 'user');
-            chatHistory.push({ role: 'user', content: msg });
+            tmhIsBusy = true;
+            tmhShowTyping();
 
-            var typingEl = appendMsg('Đang soạn trả lời...', 'bot typing');
-
+            // Gọi qua ChatProxyController của TMH.Web (giữ nguyên luồng backend)
             fetch('/api/chat-proxy', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ message: msg, history: chatHistory.slice(-10) })
+                body:    JSON.stringify({
+                    message: msg,
+                    history: tmhHistory.slice(-10)   // tối đa 10 tin gần nhất, giống TakeLast(10) trong C#
+                })
             })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                typingEl.remove();
-                var reply = data.reply || 'Xin lỗi, có lỗi xảy ra.';
-                appendMsg(reply, 'bot');
-                chatHistory.push({ role: 'assistant', content: reply });
+                tmhRemoveTyping();
+                var reply = data.reply || 'Xin lỗi, có lỗi xảy ra. Vui lòng thử lại.';
+                tmhHistory.push({ role: 'assistant', content: reply });
+                tmhAppend('bot', tmhFormatText(reply));
             })
             .catch(function() {
-                typingEl.remove();
-                appendMsg('Không kết nối được. Vui lòng thử lại.', 'bot');
+                tmhRemoveTyping();
+                tmhAppend('bot', 'Không kết nối được đến máy chủ. Vui lòng thử lại hoặc gọi hotline <strong>1900 xxxx</strong>.');
+            })
+            .finally(function() {
+                tmhIsBusy = false;
             });
-        }
-
-        function appendMsg(text, cls) {
-            var box = document.getElementById('chatMessages');
-            var el  = document.createElement('div');
-            el.className = 'chat-msg ' + cls;
-            el.textContent = text;
-            box.appendChild(el);
-            box.scrollTop = box.scrollHeight;
-            return el;
         }
     </script>
 </body>

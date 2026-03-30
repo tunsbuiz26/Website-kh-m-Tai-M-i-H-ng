@@ -97,6 +97,7 @@ builder.Services.AddScoped<VnPayService>();
 builder.Services.AddScoped<PatientService>();
 builder.Services.AddScoped<ChatService>();
 
+
 // HttpClient riêng cho Anthropic API (tránh socket exhaustion khi dùng new HttpClient())
 builder.Services.AddHttpClient("AnthropicClient", client =>
 {
