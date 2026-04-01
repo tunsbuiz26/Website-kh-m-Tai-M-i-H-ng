@@ -18,7 +18,7 @@ namespace TMH.Web.Controllers
             var url = "api/article/published?limit=50";
             if (!string.IsNullOrEmpty(category)) url += $"&category={Uri.EscapeDataString(category)}";
             var raw = await _api.GetRawJsonAsync(url);
-            ViewBag.ArticlesJson = raw ?? "[]";
+            ViewBag.ArticlesJson = (raw ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             ViewBag.Category = category ?? "";
             return View();
         }
@@ -32,11 +32,11 @@ namespace TMH.Web.Controllers
 
             var raw = await _api.GetRawJsonAsync($"api/article/{id}");
             if (raw == null) return NotFound();
-            ViewBag.ArticleJson = raw;
+            ViewBag.ArticleJson = (raw ?? "null").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
 
             // Load thêm 3 bài liên quan
             var related = await _api.GetRawJsonAsync("api/article/published?limit=3");
-            ViewBag.RelatedJson = related ?? "[]";
+            ViewBag.RelatedJson = (related ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             return View();
         }
     }

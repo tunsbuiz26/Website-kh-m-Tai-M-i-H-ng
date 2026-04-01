@@ -16,7 +16,7 @@ namespace TMH.Web.Controllers
 
             // Load 3 bài mới nhất cho trang chủ
             var articles = await _api.GetRawJsonAsync("api/article/published?limit=3");
-            ViewBag.ArticlesJson = articles ?? "[]";
+            ViewBag.ArticlesJson = (articles ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             return View();
         }
 

@@ -14,7 +14,8 @@
     .cat-btn:hover, .cat-btn.active { background: #0a4d7c; color: #fff; border-color: #0a4d7c; }
 
     /* Grid */
-    .news-grid-lg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .news-grid-lg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    }
     @@media (max-width: 768px) { .news-grid-lg { grid-template-columns: 1fr; } }
     @@media (max-width: 1024px) { .news-grid-lg { grid-template-columns: repeat(2, 1fr); } }
 
@@ -53,9 +54,12 @@
     </div>
 </div>
 
+<script type="application/json" id="_articlesData">@Html.Raw(ViewBag.ArticlesJson ?? "[]")</script>
+
 @section Scripts {
 <script>
-    var allArticles = @Html.Raw(ViewBag.ArticlesJson ?? "[]");
+    var allArticles = [];
+    try { allArticles = JSON.parse(document.getElementById('_articlesData').textContent || '[]'); } catch(e) {}
     var bgColors = [
         'linear-gradient(135deg,#e8f4fd,#d4ecf9)',
         'linear-gradient(135deg,#fdf3d7,#fde8b0)',

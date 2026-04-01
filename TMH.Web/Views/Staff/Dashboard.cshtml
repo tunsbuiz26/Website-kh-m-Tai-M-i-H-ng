@@ -190,10 +190,13 @@
     </div>
 </div>
 
+@Html.AntiForgeryToken()
+<script type="application/json" id="_doctorData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(doctors))</script>
+
 @section Scripts {
 <script>
-    var csrfToken = '@Html.AntiForgeryToken()'.match(/value="([^"]+)"/)?.[1] || '';
-    var doctorData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(doctors));
+    var csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    var doctorData = JSON.parse(document.getElementById('_doctorData').textContent || '[]');
     var appointments = [];
 
     // Set default date = hôm nay

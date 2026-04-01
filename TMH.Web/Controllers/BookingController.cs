@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using TMH.Shared.DTOs;
 using TMH.Web.Services;
 
@@ -13,6 +13,14 @@ namespace TMH.Web.Controllers
             _api = api;
         }
 
+        // GET /Booking/GetDoctorsJson — public, dùng cho hero carousel
+        [HttpGet]
+        public async Task<IActionResult> GetDoctorsJson()
+        {
+            var raw = await _api.GetRawJsonAsync("api/appointment/available-doctors");
+            return Content(raw ?? "[]", "application/json");
+        }
+
         // GET /Booking/Index — trang chọn bác sĩ + khung giờ
         [HttpGet]
         public async Task<IActionResult> Index()
@@ -21,7 +29,7 @@ namespace TMH.Web.Controllers
                 return RedirectToAction("Login", "Account", new { returnUrl = "/Booking/Index" });
 
             // Gọi song song để nhanh hơn
-            var doctorsTask = _api.GetAvailableDoctorsAsync();
+            var doctorsTask  = _api.GetAvailableDoctorsAsync();
             var patientsTask = _api.GetMyPatientsAsync();
             await Task.WhenAll(doctorsTask, patientsTask);
 
@@ -39,13 +47,13 @@ namespace TMH.Web.Controllers
 
             var result = await _api.BookAppointmentAsync(new BookAppointmentDto
             {
-                PatientId = patientId,
+                PatientId  = patientId,
                 ScheduleId = scheduleId,
-                Note = note
+                Note       = note
             });
 
-            if (result == null) { TempData["ErrorMessage"] = "Không kết nối được đến máy chủ."; return RedirectToAction("Index"); }
-            if (!result.Success) { TempData["ErrorMessage"] = result.Message; return RedirectToAction("Index"); }
+            if (result == null)        { TempData["ErrorMessage"] = "Không kết nối được đến máy chủ."; return RedirectToAction("Index"); }
+            if (!result.Success)       { TempData["ErrorMessage"] = result.Message;                    return RedirectToAction("Index"); }
 
             TempData["SuccessMessage"] = result.Message;
             return RedirectToAction("MyAppointments");
@@ -64,8 +72,8 @@ namespace TMH.Web.Controllers
                 return Json(new { success = false, message = "Vui lòng chọn khung giờ." });
 
             var result = await _api.BookAppointmentAsync(dto);
-            if (result == null) return Json(new { success = false, message = "Không kết nối được đến máy chủ." });
-            if (!result.Success) return Json(new { success = false, message = result.Message });
+            if (result == null)   return Json(new { success = false, message = "Không kết nối được đến máy chủ." });
+            if (!result.Success)  return Json(new { success = false, message = result.Message });
 
             return Json(new { success = true, appointmentId = result.Data?.Id ?? 0, message = result.Message });
         }
@@ -106,7 +114,7 @@ namespace TMH.Web.Controllers
                 return Json(new { success = false, message = "Thông tin hồ sơ không hợp lệ." });
 
             var result = await _api.CreatePatientAsync(dto);
-            if (result == null) return Json(new { success = false, message = "Không kết nối được đến máy chủ." });
+            if (result == null)  return Json(new { success = false, message = "Không kết nối được đến máy chủ." });
             if (!result.Success) return Json(new { success = false, message = result.Message });
             return Json(new { success = true, patient = result.Data });
         }

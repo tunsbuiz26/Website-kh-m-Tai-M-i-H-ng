@@ -1,10 +1,909 @@
 @{
-    ViewBag.Title = "Trang bệnh nhân";
+    ViewBag.Title = "Cổng bệnh nhân";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var appointmentsJson = ViewBag.AppointmentsJson as string ?? "[]";
 }
-<div style="padding:40px;">
-    <h2 style="font-family:'Crimson Pro',serif;font-size:26px;color:#0a4d7c;margin-bottom:8px;">
-        Xin chào, @ViewBag.UserName!
-    </h2>
-    <p style="color:#7a9bb0;">Cổng bệnh nhân — quản lý lịch khám và kết quả của bạn.</p>
+
+@section Styles {
+<style>
+/* ── Layout ─────────────────────────────────────────────────── */
+.pt-wrap { max-width: 1000px; margin: 32px auto; padding: 0 20px; }
+
+/* ── Header ─────────────────────────────────────────────────── */
+.pt-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+.pt-greeting { font-family:'Crimson Pro',serif; font-size:28px; font-weight:700; color:#0a4d7c; display:flex; align-items:center; gap:8px; }
+.pt-sub { font-size:13px; color:#7a9bb0; margin-top:4px; }
+.btn-book { height:40px; padding:0 22px; background:#0a4d7c; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; text-decoration:none; display:inline-flex; align-items:center; gap:7px; transition:background .15s; }
+.btn-book:hover { background:#1a6fa8; color:#fff; }
+
+/* ── Stats ──────────────────────────────────────────────────── */
+.pt-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px; }
+.pt-stat { background:#fff; border:1px solid #d4e8f5; border-radius:14px; padding:16px 18px; transition:box-shadow .15s; }
+.pt-stat:hover { box-shadow:0 4px 16px rgba(10,77,124,.08); }
+.pt-stat-num { font-size:28px; font-weight:700; color:#0a4d7c; line-height:1.1; }
+.pt-stat-lbl { font-size:12px; color:#7a9bb0; margin-top:4px; }
+.pt-stat-ico { font-size:20px; margin-bottom:6px; }
+.s2 .pt-stat-num { color:#1a6fa8; }
+.s3 .pt-stat-num { color:#2d7a52; }
+.s4 .pt-stat-num { color:#c0392b; }
+
+/* ── Tabs ───────────────────────────────────────────────────── */
+.pt-tabs { display:flex; border-bottom:2px solid #e8f0f7; margin-bottom:22px; gap:0; overflow-x:auto; }
+.pt-tab { padding:11px 18px; font-size:13px; font-weight:500; color:#7a9bb0; background:none; border:none; cursor:pointer; border-bottom:2.5px solid transparent; margin-bottom:-2px; font-family:'DM Sans',sans-serif; transition:all .15s; white-space:nowrap; display:flex; align-items:center; gap:6px; }
+.pt-tab:hover { color:#0a4d7c; }
+.pt-tab.active { color:#0a4d7c; border-bottom-color:#0a4d7c; font-weight:600; }
+.notif-badge { display:inline-flex; background:#ef4444; color:#fff; font-size:10px; font-weight:700; width:17px; height:17px; border-radius:50%; align-items:center; justify-content:center; }
+
+/* ── Appointment cards ──────────────────────────────────────── */
+.appt-card { background:#fff; border:1px solid #d4e8f5; border-radius:14px; padding:16px 20px; margin-bottom:10px; display:flex; gap:16px; align-items:flex-start; transition:box-shadow .15s; }
+.appt-card:hover { box-shadow:0 4px 18px rgba(10,77,124,.07); }
+.appt-date-box { text-align:center; background:#f0f8ff; border-radius:10px; padding:10px 14px; min-width:54px; flex-shrink:0; border:1px solid #d4e8f5; }
+.appt-date-day { font-size:22px; font-weight:700; color:#0a4d7c; line-height:1; }
+.appt-date-month { font-size:10px; color:#7a9bb0; margin-top:3px; text-transform:uppercase; font-weight:600; }
+.appt-body { flex:1; min-width:0; }
+.appt-doc { font-size:14px; font-weight:600; color:#0a4d7c; margin-bottom:3px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.appt-spec { font-size:12px; color:#7a9bb0; margin-bottom:8px; }
+.appt-meta { display:flex; flex-wrap:wrap; gap:10px; font-size:12px; color:#7a9bb0; }
+.appt-meta span { display:flex; align-items:center; gap:4px; }
+.appt-code { font-family:monospace; font-size:11px; background:#f0f8ff; padding:2px 8px; border-radius:4px; color:#1a6fa8; border:1px solid #d4e8f5; }
+.appt-note { font-size:12px; color:#555; background:#fafafa; border-left:3px solid #d4e8f5; padding:6px 10px; border-radius:0 6px 6px 0; margin-top:9px; }
+.appt-diag { font-size:12px; color:#155724; background:#f0faf4; border-left:3px solid #2d7a52; padding:6px 10px; border-radius:0 6px 6px 0; margin-top:9px; }
+.appt-actions { display:flex; flex-direction:column; gap:7px; flex-shrink:0; }
+
+/* Badges */
+.badge { display:inline-flex; align-items:center; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }
+.bc  { background:#fff3cd; color:#856404; }
+.bx  { background:#cce5ff; color:#004085; }
+.bd  { background:#d1ecf1; color:#0c5460; }
+.bk  { background:#d4edda; color:#155724; }
+.bh  { background:#e2e3e5; color:#383d41; }
+.by  { background:#fdecea; color:#c0392b; }
+.bv  { background:#f8d7da; color:#721c24; }
+
+/* Buttons */
+.btn-sm { height:32px; padding:0 14px; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; border:1px solid; font-family:'DM Sans',sans-serif; display:inline-flex; align-items:center; gap:5px; transition:all .15s; }
+.btn-outline { background:#fff; border-color:#d4e8f5; color:#0a4d7c; }
+.btn-outline:hover { background:#f0f8ff; border-color:#1a6fa8; }
+.btn-danger { background:#fff; border-color:#f5c6c6; color:#c0392b; }
+.btn-danger:hover { background:#fdecea; }
+.btn-primary-sm { background:#0a4d7c; border-color:#0a4d7c; color:#fff; text-decoration:none; }
+.btn-primary-sm:hover { background:#1a6fa8; border-color:#1a6fa8; color:#fff; }
+
+/* ── Section labels ─────────────────────────────────────────── */
+.sec-label { font-size:13px; font-weight:600; color:#0a4d7c; margin:0 0 12px; display:flex; align-items:center; gap:7px; }
+.sec-label::after { content:''; flex:1; height:1px; background:#e8f0f7; }
+
+/* ── Empty state ────────────────────────────────────────────── */
+.empty { text-align:center; padding:40px 24px; background:#fff; border:1.5px dashed #d4e8f5; border-radius:14px; }
+.empty-ico { font-size:40px; margin-bottom:12px; }
+.empty-ttl { font-size:14px; font-weight:600; color:#0a4d7c; margin-bottom:6px; }
+.empty-desc { font-size:12px; color:#7a9bb0; margin-bottom:18px; line-height:1.6; }
+
+/* ── Result cards ───────────────────────────────────────────── */
+.result-card { background:#fff; border:1px solid #d4e8f5; border-radius:14px; overflow:hidden; margin-bottom:14px; }
+.result-head { background:linear-gradient(135deg,#f0f8ff,#e8f4fd); padding:14px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #d4e8f5; }
+.result-head-left .rdoc { font-size:14px; font-weight:600; color:#0a4d7c; }
+.result-head-left .rdate { font-size:12px; color:#7a9bb0; margin-top:3px; display:flex; align-items:center; gap:8px; }
+.result-body { padding:16px 20px; }
+.result-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 20px; margin-bottom:14px; }
+.result-field .rf-lbl { font-size:11px; font-weight:600; color:#7a9bb0; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px; }
+.result-field .rf-val { font-size:13px; color:#0a4d7c; font-weight:500; }
+.result-diag { background:#f0faf4; border-radius:10px; padding:14px 16px; border-left:4px solid #2d7a52; }
+.result-diag .rd-label { font-size:11px; font-weight:700; color:#2d7a52; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+.result-diag .rd-text { font-size:13px; color:#1a4a2d; line-height:1.6; }
+.result-no-diag { background:#fafafa; border-radius:10px; padding:12px 16px; border-left:4px solid #ddd; font-size:13px; color:#9ab0bf; font-style:italic; }
+.btn-print { height:34px; padding:0 14px; background:#fff; border:1px solid #d4e8f5; color:#0a4d7c; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all .15s; }
+.btn-print:hover { border-color:#0a4d7c; background:#f0f8ff; }
+
+/* ── Profile cards ──────────────────────────────────────────── */
+.profile-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:14px; }
+.profile-card { background:#fff; border:1px solid #d4e8f5; border-radius:14px; padding:18px; display:flex; gap:14px; align-items:flex-start; transition:box-shadow .15s; }
+.profile-card:hover { box-shadow:0 4px 16px rgba(10,77,124,.08); }
+.profile-avatar { width:46px; height:46px; border-radius:50%; background:linear-gradient(135deg,#0a4d7c,#1a6fa8); color:#fff; font-size:17px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'Crimson Pro',serif; }
+.profile-info { flex:1; min-width:0; }
+.profile-name { font-size:14px; font-weight:600; color:#0a4d7c; margin-bottom:4px; }
+.profile-meta { font-size:12px; color:#7a9bb0; margin-bottom:4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.profile-code { font-family:monospace; font-size:11px; color:#1a6fa8; background:#f0f8ff; padding:2px 7px; border-radius:4px; border:1px solid #d4e8f5; }
+.profile-history { font-size:12px; color:#555; background:#fafafa; border-radius:6px; padding:6px 9px; margin-top:6px; border:1px solid #eee; line-height:1.5; }
+.profile-acts { display:flex; gap:7px; margin-top:10px; }
+.btn-add-profile { width:100%; height:50px; background:#f8fbff; border:2px dashed #1a6fa8; border-radius:14px; color:#1a6fa8; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:7px; }
+.btn-add-profile:hover { background:#e8f4fd; border-color:#0a4d7c; color:#0a4d7c; }
+
+/* ── Personal profile card ──────────────────────────────────── */
+.personal-card { background:#fff; border:1px solid #d4e8f5; border-radius:16px; padding:28px; }
+.personal-header { display:flex; align-items:center; gap:18px; margin-bottom:24px; padding-bottom:18px; border-bottom:1px solid #e8f0f7; }
+.personal-avatar { width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,#0a4d7c,#1a6fa8); color:#fff; font-size:24px; font-weight:700; display:flex; align-items:center; justify-content:center; font-family:'Crimson Pro',serif; flex-shrink:0; }
+.personal-name { font-size:20px; font-weight:700; color:#0a4d7c; font-family:'Crimson Pro',serif; }
+.personal-role { font-size:12px; color:#7a9bb0; margin-top:3px; }
+.personal-fields { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:22px; }
+.pf-item { }
+.pf-lbl { font-size:11px; font-weight:600; color:#7a9bb0; text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
+.pf-val { font-size:14px; color:#0a4d7c; font-weight:500; }
+.pf-empty { color:#bbb; font-style:italic; font-weight:400; }
+.pf-tag { display:inline-flex; align-items:center; background:#f0f8ff; border:1px solid #d4e8f5; padding:2px 10px; border-radius:12px; font-size:12px; color:#1a6fa8; font-weight:500; }
+
+/* ── Notifications ──────────────────────────────────────────── */
+.notif-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.notif-item { background:#fff; border:1px solid #d4e8f5; border-radius:12px; padding:14px 16px; margin-bottom:8px; display:flex; gap:12px; cursor:pointer; transition:all .15s; }
+.notif-item:hover { background:#f8fbff; }
+.notif-item.unread { border-color:#1a6fa8; background:#f0f8ff; }
+.notif-ico { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; background:#e8f4fd; }
+.notif-item.unread .notif-ico { background:#d4eaf8; }
+.notif-body { flex:1; }
+.notif-title { font-size:13px; font-weight:600; color:#0a4d7c; margin-bottom:3px; }
+.notif-content { font-size:12px; color:#7a9bb0; line-height:1.6; }
+.notif-time { font-size:11px; color:#aab8c2; margin-top:5px; display:flex; align-items:center; gap:4px; }
+.unread-dot { width:8px; height:8px; border-radius:50%; background:#1a6fa8; flex-shrink:0; margin-top:8px; }
+.btn-read-all { height:32px; padding:0 14px; background:#fff; border:1px solid #d4e8f5; color:#0a4d7c; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; transition:all .15s; }
+.btn-read-all:hover { background:#f0f8ff; }
+
+/* ── Modal ──────────────────────────────────────────────────── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9990; align-items:center; justify-content:center; }
+.overlay.open { display:flex; }
+.modal-box { background:#fff; border-radius:18px; padding:28px; width:480px; max-width:96vw; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.modal-title { font-size:16px; font-weight:700; color:#0a4d7c; margin-bottom:20px; display:flex; align-items:center; gap:8px; }
+.form-group { margin-bottom:15px; }
+.form-lbl { font-size:11px; font-weight:600; color:#3a5a72; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:5px; }
+.form-inp { width:100%; border:1.5px solid #d4e8f5; border-radius:9px; padding:9px 12px; font-size:13px; font-family:'DM Sans',sans-serif; box-sizing:border-box; outline:none; transition:border-color .15s; background:#fff; }
+.form-inp:focus { border-color:#1a6fa8; box-shadow:0 0 0 3px rgba(26,111,168,.1); }
+.form-row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-footer { display:flex; gap:10px; margin-top:22px; }
+.btn-modal-save { flex:2; height:40px; background:#0a4d7c; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background .15s; }
+.btn-modal-save:hover { background:#1a6fa8; }
+.btn-modal-cancel { flex:1; height:40px; background:#f5f5f5; color:#555; border:none; border-radius:10px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-modal-cancel:hover { background:#eee; }
+.alert { border-radius:8px; padding:9px 13px; font-size:12px; margin-bottom:12px; display:none; }
+.alert-err { background:#fdecea; border:1px solid #f5c6c6; color:#c0392b; }
+.alert-ok  { background:#d4edda; border:1px solid #b8ddc4; color:#155724; }
+
+/* ── Toast ──────────────────────────────────────────────────── */
+.toast { position:fixed; top:72px; right:22px; z-index:99999; padding:12px 20px; border-radius:10px; font-size:13px; font-weight:600; box-shadow:0 6px 24px rgba(0,0,0,.15); display:none; max-width:340px; }
+.toast.ok  { background:#d4edda; color:#155724; border:1px solid #b8ddc4; }
+.toast.err { background:#fdecea; color:#c0392b; border:1px solid #f5c6c6; }
+@@keyframes fadeSlide { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── Loading spinner ────────────────────────────────────────── */
+.spin { text-align:center; padding:32px; color:#7a9bb0; font-size:13px; }
+
+@@media (max-width:640px) {
+    .pt-stats { grid-template-columns:repeat(2,1fr); }
+    .profile-grid { grid-template-columns:1fr; }
+    .personal-fields { grid-template-columns:1fr; }
+    .result-grid { grid-template-columns:1fr; }
+}
+</style>
+}
+
+<div class="pt-wrap">
+    <!-- Header -->
+    <div class="pt-header">
+        <div>
+            <div class="pt-greeting">@ViewBag.UserName 👋</div>
+            <div class="pt-sub">Cổng bệnh nhân — quản lý sức khoẻ của bạn</div>
+        </div>
+        <a href="/Booking" class="btn-book">📅 Đặt lịch khám mới</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="pt-stats">
+        <div class="pt-stat">
+            <div class="pt-stat-ico">📋</div>
+            <div class="pt-stat-num" id="stTotal">—</div>
+            <div class="pt-stat-lbl">Tổng lịch khám</div>
+        </div>
+        <div class="pt-stat s2">
+            <div class="pt-stat-ico">⏳</div>
+            <div class="pt-stat-num" id="stUp">—</div>
+            <div class="pt-stat-lbl">Sắp tới</div>
+        </div>
+        <div class="pt-stat s3">
+            <div class="pt-stat-ico">✅</div>
+            <div class="pt-stat-num" id="stDone">—</div>
+            <div class="pt-stat-lbl">Hoàn thành</div>
+        </div>
+        <div class="pt-stat s4">
+            <div class="pt-stat-ico">❌</div>
+            <div class="pt-stat-num" id="stCancel">—</div>
+            <div class="pt-stat-lbl">Đã huỷ</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="pt-tabs">
+        <button class="pt-tab active" onclick="switchTab('schedule',this)">📋 Lịch khám</button>
+        <button class="pt-tab" onclick="switchTab('results',this)">🩺 Kết quả khám</button>
+        <button class="pt-tab" onclick="switchTab('relatives',this)">👨‍👩‍👧 Hồ sơ người thân</button>
+        <button class="pt-tab" onclick="switchTab('profile',this)">👤 Hồ sơ cá nhân</button>
+        <button class="pt-tab" onclick="switchTab('notifs',this)">
+            🔔 Thông báo
+            <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+        </button>
+    </div>
+
+    <!-- TAB: Lịch khám -->
+    <div id="tab-schedule">
+        <div class="sec-label">Lịch khám sắp tới</div>
+        <div id="upcomingList"></div>
+        <div class="sec-label" style="margin-top:22px">Lịch sử khám bệnh</div>
+        <div id="historyList"></div>
+    </div>
+
+    <!-- TAB: Kết quả khám -->
+    <div id="tab-results" style="display:none">
+        <div id="resultsList"></div>
+    </div>
+
+    <!-- TAB: Hồ sơ người thân -->
+    <div id="tab-relatives" style="display:none">
+        <div class="sec-label">Danh sách hồ sơ</div>
+        <div id="relativesList"></div>
+        <button class="btn-add-profile" onclick="openProfileForm(null)">
+            ➕ Thêm hồ sơ người thân
+        </button>
+    </div>
+
+    <!-- TAB: Hồ sơ cá nhân -->
+    <div id="tab-profile" style="display:none">
+        <div class="personal-card" id="personalCard">
+            <div class="spin">Đang tải thông tin...</div>
+        </div>
+    </div>
+
+    <!-- TAB: Thông báo -->
+    <div id="tab-notifs" style="display:none">
+        <div class="notif-header">
+            <div class="sec-label" style="margin:0;flex:1">Thông báo của bạn</div>
+            <button class="btn-read-all" onclick="readAllNotifs()">Đánh dấu tất cả đã đọc</button>
+        </div>
+        <div id="notifList"></div>
+    </div>
 </div>
+
+<!-- Modal: Hồ sơ người thân -->
+<div class="overlay" id="profileModal" onclick="if(event.target===this)closeProfileForm()">
+    <div class="modal-box">
+        <div class="modal-title" id="profileModalTitle">👨‍👩‍👧 Thêm hồ sơ người thân</div>
+        <div class="alert alert-err" id="pfErr"></div>
+        <div class="alert alert-ok"  id="pfOk"></div>
+        <div class="form-group">
+            <label class="form-lbl">Họ và tên *</label>
+            <input class="form-inp" id="pfName" placeholder="Nguyễn Văn A" />
+        </div>
+        <div class="form-row2">
+            <div class="form-group">
+                <label class="form-lbl">Ngày sinh *</label>
+                <input class="form-inp" id="pfDob" type="date" />
+            </div>
+            <div class="form-group">
+                <label class="form-lbl">Giới tính *</label>
+                <select class="form-inp" id="pfGender">
+                    <option value="">-- Chọn --</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                    <option value="Khác">Khác</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-lbl">Tiền sử bệnh</label>
+            <textarea class="form-inp" id="pfHistory" rows="3" placeholder="Dị ứng, bệnh mãn tính, thuốc đang dùng..."></textarea>
+        </div>
+        <input type="hidden" id="pfId" value="0" />
+        <div class="modal-footer">
+            <button class="btn-modal-cancel" onclick="closeProfileForm()">Huỷ</button>
+            <button class="btn-modal-save" onclick="saveProfile()">💾 Lưu hồ sơ</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Hồ sơ cá nhân -->
+<div class="overlay" id="personalModal" onclick="if(event.target===this)closePersonalForm()">
+    <div class="modal-box">
+        <div class="modal-title">✏️ Chỉnh sửa thông tin cá nhân</div>
+        <div class="alert alert-err" id="pmErr"></div>
+        <div class="alert alert-ok"  id="pmOk"></div>
+        <div class="form-row2">
+            <div class="form-group">
+                <label class="form-lbl">Họ và tên đệm</label>
+                <input class="form-inp" id="pmHoTenDem" placeholder="Nguyễn Thị" />
+            </div>
+            <div class="form-group">
+                <label class="form-lbl">Tên</label>
+                <input class="form-inp" id="pmTen" placeholder="Bình" />
+            </div>
+        </div>
+        <div class="form-row2">
+            <div class="form-group">
+                <label class="form-lbl">Ngày sinh</label>
+                <input class="form-inp" id="pmDob" type="date" />
+            </div>
+            <div class="form-group">
+                <label class="form-lbl">Giới tính</label>
+                <select class="form-inp" id="pmGender">
+                    <option value="">-- Chọn --</option>
+                    <option>Nam</option><option>Nữ</option><option>Khác</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row2">
+            <div class="form-group">
+                <label class="form-lbl">Nhóm máu</label>
+                <select class="form-inp" id="pmBlood">
+                    <option value="">-- Chọn --</option>
+                    <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                    <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-lbl">Số điện thoại</label>
+                <input class="form-inp" id="pmPhone" placeholder="0901234567" readonly style="background:#f8f8f8;color:#888" />
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-lbl">Địa chỉ</label>
+            <input class="form-inp" id="pmAddr" placeholder="123 Đường ABC, Quận 1, TP.HCM" />
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-cancel" onclick="closePersonalForm()">Huỷ</button>
+            <button class="btn-modal-save" onclick="savePersonal()">💾 Lưu thay đổi</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+@Html.AntiForgeryToken()
+<script type="application/json" id="_apptData">@Html.Raw(appointmentsJson)</script>
+
+@section Scripts {
+<script>
+var csrf      = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+var allAppts  = [];
+
+// norm() — chuẩn hóa field name: chấp nhận cả camelCase (API đã config) lẫn PascalCase (fallback)
+function norm(a) {
+    return {
+        id           : a.id            != null ? a.id            : a.Id,
+        bookingCode  : a.bookingCode   != null ? a.bookingCode   : (a.BookingCode  || ''),
+        patientName  : a.patientName   != null ? a.patientName   : (a.PatientName  || ''),
+        doctorName   : a.doctorName    != null ? a.doctorName    : (a.DoctorName   || ''),
+        specialty    : a.specialty     != null ? a.specialty     : (a.Specialty    || ''),
+        workDate     : a.workDate      != null ? a.workDate      : a.WorkDate,
+        startTime    : a.startTime     != null ? a.startTime     : (a.StartTime    || ''),
+        endTime      : a.endTime       != null ? a.endTime       : (a.EndTime      || ''),
+        status       : a.status        != null ? a.status        : (a.Status       || ''),
+        statusDisplay: a.statusDisplay != null ? a.statusDisplay : (a.StatusDisplay|| ''),
+        note         : a.note         !== undefined ? a.note      : (a.Note         || null),
+        diagnosis    : a.diagnosis    !== undefined ? a.diagnosis : (a.Diagnosis    || null),
+        bookedAt     : a.bookedAt      != null ? a.bookedAt      : a.BookedAt
+    };
+}
+
+try {
+    var _raw = JSON.parse(document.getElementById('_apptData').textContent || '[]');
+    allAppts = Array.isArray(_raw) ? _raw.map(norm) : [];
+} catch(e) { console.error('Parse appointments error:', e); allAppts = []; }
+var tabLoaded = {};
+
+var UPCOMING_ST = ['ChoXacNhan','DaXacNhan','DaDen','DangKham'];
+var BADGE_MAP = {
+    'ChoXacNhan' : ['bc','⏳ Chờ xác nhận'],
+    'DaXacNhan'  : ['bx','✅ Đã xác nhận'],
+    'DaDen'      : ['bd','🏥 Đã đến'],
+    'DangKham'   : ['bk','🩺 Đang khám'],
+    'HoanThanh'  : ['bh','✔ Hoàn thành'],
+    'DaHuy'      : ['by','❌ Đã huỷ'],
+    'VangMat'    : ['bv','🚫 Vắng mặt']
+};
+
+// ── Utilities ────────────────────────────────────────────────
+function showToast(msg, ok) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + (ok ? 'ok' : 'err');
+    t.style.cssText = 'display:block;animation:fadeSlide .3s ease';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function(){ t.style.display='none'; }, 3500);
+}
+
+function fmtDate(s) {
+    var d = new Date(s);
+    return {
+        day  : d.getDate().toString().padStart(2,'0'),
+        mon  : d.toLocaleString('vi-VN',{month:'short'}).replace('.',''),
+        full : d.toLocaleDateString('vi-VN'),
+        iso  : d.toISOString().substring(0,10)
+    };
+}
+
+function calcAge(dob) {
+    return Math.floor((Date.now() - new Date(dob)) / 31557600000);
+}
+
+function initials(name) {
+    if (!name) return '?';
+    var parts = name.trim().split(' ');
+    return parts[parts.length-1].charAt(0).toUpperCase();
+}
+
+// ── Tab switching ─────────────────────────────────────────────
+function switchTab(name, btn) {
+    ['schedule','results','relatives','profile','notifs'].forEach(function(t){
+        document.getElementById('tab-'+t).style.display = (t===name) ? '' : 'none';
+    });
+    document.querySelectorAll('.pt-tab').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    if (!tabLoaded[name]) { tabLoaded[name] = true; loadTab(name); }
+}
+
+function loadTab(name) {
+    if (name === 'results')   renderResults();
+    if (name === 'relatives') loadRelatives();
+    if (name === 'profile')   loadPersonal();
+    if (name === 'notifs')    loadNotifs();
+}
+
+// ══════════════════════════════════════════════════════════════
+// TAB 1: LỊCH KHÁM
+// ══════════════════════════════════════════════════════════════
+function renderApptCard(a, canCancel) {
+    if (!Array.isArray(allAppts)) return '';
+    var dt  = fmtDate(a.workDate);
+    var bg  = BADGE_MAP[a.status] || ['bc', a.statusDisplay || a.status];
+    var acts = '';
+
+    if (canCancel && (a.status === 'ChoXacNhan' || a.status === 'DaXacNhan'))
+        acts += '<button class="btn-sm btn-danger" onclick="cancelAppt('+a.id+',this)">Huỷ lịch</button>';
+    if (a.status === 'HoanThanh' || a.status === 'DaHuy')
+        acts += '<a class="btn-sm btn-primary-sm" href="/Booking">Đặt lại</a>';
+
+    return '<div class="appt-card" id="ac-'+a.id+'">'
+        + '<div class="appt-date-box"><div class="appt-date-day">'+dt.day+'</div><div class="appt-date-month">'+dt.mon+'</div></div>'
+        + '<div class="appt-body">'
+            + '<div class="appt-doc">BS. '+(a.doctorName||'')+'<span class="badge '+bg[0]+'">'+bg[1]+'</span></div>'
+            + '<div class="appt-spec">'+(a.specialty||'Tai Mũi Họng')+'</div>'
+            + '<div class="appt-meta">'
+                + '<span>🕐 '+(a.startTime||'')+' – '+(a.endTime||'')+'</span>'
+                + '<span>📅 '+dt.full+'</span>'
+                + '<span class="appt-code">#'+(a.bookingCode||'')+'</span>'
+                + (a.patientName ? '<span>👤 '+a.patientName+'</span>' : '')
+            + '</div>'
+            + (a.note ? '<div class="appt-note">📝 <strong>Ghi chú:</strong> '+a.note+'</div>' : '')
+            + (a.diagnosis ? '<div class="appt-diag">🩺 <strong>Chẩn đoán:</strong> '+a.diagnosis+'</div>' : '')
+        + '</div>'
+        + (acts ? '<div class="appt-actions">'+acts+'</div>' : '')
+        + '</div>';
+}
+
+function initSchedule() {
+    if (!Array.isArray(allAppts)) allAppts = [];
+    var up   = allAppts.filter(function(a){ return UPCOMING_ST.indexOf(a.status) >= 0; })
+                       .sort(function(a,b){ return new Date(a.workDate)-new Date(b.workDate); });
+    var hist = allAppts.filter(function(a){ return UPCOMING_ST.indexOf(a.status) < 0; })
+                       .sort(function(a,b){ return new Date(b.workDate)-new Date(a.workDate); });
+    var done = allAppts.filter(function(a){ return a.status==='HoanThanh'; });
+    var can  = allAppts.filter(function(a){ return a.status==='DaHuy'||a.status==='VangMat'; });
+
+    document.getElementById('stTotal').textContent  = allAppts.length;
+    document.getElementById('stUp').textContent     = up.length;
+    document.getElementById('stDone').textContent   = done.length;
+    document.getElementById('stCancel').textContent = can.length;
+
+    var upEl = document.getElementById('upcomingList');
+    upEl.innerHTML = up.length
+        ? up.map(function(a){ return renderApptCard(a, true); }).join('')
+        : '<div class="empty"><div class="empty-ico">📅</div><div class="empty-ttl">Chưa có lịch khám sắp tới</div><div class="empty-desc">Đặt lịch ngay để được khám bởi đội ngũ bác sĩ chuyên khoa TMH</div><a href="/Booking" class="btn-primary-sm btn-sm" style="margin:0 auto">Đặt lịch ngay</a></div>';
+
+    var hiEl = document.getElementById('historyList');
+    hiEl.innerHTML = hist.length
+        ? hist.map(function(a){ return renderApptCard(a, false); }).join('')
+        : '<div class="empty"><div class="empty-ico">🕐</div><div class="empty-ttl">Chưa có lịch sử khám</div></div>';
+}
+
+function cancelAppt(id, btn) {
+    if (!confirm('Xác nhận huỷ lịch khám này?')) return;
+    btn.disabled = true; btn.textContent = 'Đang huỷ...';
+    fetch('/Patient/Cancel?id='+id, { method:'POST', headers:{'RequestVerificationToken':csrf} })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.success || d.Success) {
+            showToast('Đã huỷ lịch thành công.', true);
+            var card = document.getElementById('ac-'+id);
+            if (card) { card.style.opacity='0'; card.style.transition='opacity .3s'; setTimeout(function(){ card.remove(); initSchedule(); }, 300); }
+        } else {
+            showToast(d.message || 'Không thể huỷ.', false);
+            btn.disabled = false; btn.textContent = 'Huỷ lịch';
+        }
+    }).catch(function(){ showToast('Lỗi kết nối.', false); btn.disabled=false; btn.textContent='Huỷ lịch'; });
+}
+
+// ══════════════════════════════════════════════════════════════
+// TAB 2: KẾT QUẢ KHÁM
+// ══════════════════════════════════════════════════════════════
+function renderResults() {
+    var done = Array.isArray(allAppts)
+        ? allAppts.filter(function(a){ return a.status==='HoanThanh'; })
+                  .sort(function(a,b){ return new Date(b.workDate)-new Date(a.workDate); })
+        : [];
+    var el = document.getElementById('resultsList');
+
+    if (!done.length) {
+        el.innerHTML = '<div class="empty"><div class="empty-ico">🩺</div><div class="empty-ttl">Chưa có kết quả khám</div><div class="empty-desc">Kết quả sẽ xuất hiện tại đây sau khi bác sĩ hoàn thành khám và ghi chẩn đoán</div></div>';
+        return;
+    }
+
+    el.innerHTML = done.map(function(a) {
+        var dt = fmtDate(a.workDate);
+        var diagHtml = a.diagnosis
+            ? '<div class="result-diag"><div class="rd-label">🩺 Kết quả chẩn đoán</div><div class="rd-text">'+a.diagnosis+'</div></div>'
+            : '<div class="result-no-diag">Bác sĩ chưa cập nhật chẩn đoán</div>';
+        return '<div class="result-card" id="rc-'+a.id+'">'
+            + '<div class="result-head">'
+                + '<div class="result-head-left">'
+                    + '<div class="rdoc">BS. '+(a.doctorName||'')+' — '+(a.specialty||'Tai Mũi Họng')+'</div>'
+                    + '<div class="rdate"><span>📅 '+dt.full+'</span><span>🕐 '+(a.startTime||'')+'</span><span class="appt-code">#'+(a.bookingCode||'')+'</span></div>'
+                + '</div>'
+                + '<button class="btn-print" data-card="rc-'+a.id+'" data-code="'+a.bookingCode+'" onclick="printResult(this.dataset.card,this.dataset.code)">🖨 In phiếu</button>'
+            + '</div>'
+            + '<div class="result-body">'
+                + '<div class="result-grid">'
+                    + '<div class="result-field"><div class="rf-lbl">Bệnh nhân</div><div class="rf-val">'+(a.patientName||'—')+'</div></div>'
+                    + '<div class="result-field"><div class="rf-lbl">Ngày khám</div><div class="rf-val">'+dt.full+'</div></div>'
+                    + '<div class="result-field"><div class="rf-lbl">Bác sĩ phụ trách</div><div class="rf-val">'+(a.doctorName||'—')+'</div></div>'
+                    + '<div class="result-field"><div class="rf-lbl">Chuyên khoa</div><div class="rf-val">'+(a.specialty||'Tai Mũi Họng')+'</div></div>'
+                    + (a.note ? '<div class="result-field" style="grid-column:span 2"><div class="rf-lbl">Triệu chứng / Ghi chú</div><div class="rf-val">'+a.note+'</div></div>' : '')
+                + '</div>'
+                + diagHtml
+            + '</div></div>';
+    }).join('');
+}
+
+function printResult(cardId, code) {
+    var card = document.getElementById(cardId);
+    if (!card) return;
+    var win = window.open('', '_blank', 'width=700,height=900');
+    win.document.write('<!DOCTYPE html><html><head><title>Phiếu khám #'+code+'</title>');
+    win.document.write('<meta charset="utf-8"><style>');
+    win.document.write('*{box-sizing:border-box}body{font-family:Arial,sans-serif;padding:36px;max-width:620px;margin:0 auto;color:#222}');
+    win.document.write('.clinic-name{font-size:20px;font-weight:700;color:#0a4d7c;text-align:center}');
+    win.document.write('.clinic-sub{font-size:12px;color:#666;text-align:center;margin:4px 0 0}');
+    win.document.write('.divider{border:none;border-top:2px solid #0a4d7c;margin:18px 0}');
+    win.document.write('.title{font-size:16px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.06em;margin-bottom:22px}');
+    win.document.write('.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:20px}');
+    win.document.write('.field .lbl{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:3px}');
+    win.document.write('.field .val{font-size:13px;color:#000}');
+    win.document.write('.diag{background:#f0faf4;border-left:4px solid #2d7a52;padding:14px 16px;border-radius:4px;margin-top:6px}');
+    win.document.write('.diag-title{font-size:12px;font-weight:700;color:#2d7a52;text-transform:uppercase;margin-bottom:6px}');
+    win.document.write('.diag-text{font-size:13px;color:#1a4a2d;line-height:1.6}');
+    win.document.write('.footer{display:flex;justify-content:space-between;margin-top:32px;padding-top:18px;border-top:1px solid #ddd;font-size:12px;color:#666}');
+    win.document.write('.sig{text-align:center}');
+    win.document.write('.sig-name{font-size:13px;font-weight:700;margin-top:40px;border-top:1px solid #333;padding-top:4px;display:inline-block}');
+    win.document.write('</style></head><body>');
+    win.document.write('<div class="clinic-name">PHÒNG KHÁM TAI MŨI HỌNG</div>');
+    win.document.write('<div class="clinic-sub">123 Đường Y Tế, Q.1, TP.HCM &nbsp;|&nbsp; Hotline: 1800 5678 &nbsp;|&nbsp; Email: info@@pktatmuihong.vn</div>');
+    win.document.write('<hr class="divider">');
+    win.document.write('<div class="title">Phiếu kết quả khám bệnh</div>');
+
+    var fields = card.querySelectorAll('.result-field');
+    win.document.write('<div class="grid">');
+    fields.forEach(function(f){
+        var lbl = f.querySelector('.rf-lbl'), val = f.querySelector('.rf-val');
+        if (lbl && val) win.document.write('<div class="field"><div class="lbl">'+lbl.textContent+'</div><div class="val">'+val.textContent+'</div></div>');
+    });
+    win.document.write('</div>');
+
+    var diag = card.querySelector('.result-diag');
+    var noDiag = card.querySelector('.result-no-diag');
+    if (diag) {
+        win.document.write('<div class="diag"><div class="diag-title">Kết quả chẩn đoán</div>');
+        win.document.write('<div class="diag-text">' + (card.querySelector('.rd-text') ? card.querySelector('.rd-text').textContent : '') + '</div></div>');
+    } else if (noDiag) {
+        win.document.write('<div class="diag" style="background:#fafafa;border-color:#ddd"><div class="diag-text" style="color:#999">Chưa có chẩn đoán</div></div>');
+    }
+
+    win.document.write('<div class="footer"><span>Ngày in: '+new Date().toLocaleDateString('vi-VN')+'</span>');
+    win.document.write('<div class="sig"><div>Bác sĩ điều trị</div><div class="sig-name">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div></div>');
+    win.document.write('</body></html>');
+    win.document.close();
+    setTimeout(function(){ win.print(); }, 600);
+}
+
+// ══════════════════════════════════════════════════════════════
+// TAB 3: HỒ SƠ NGƯỜI THÂN
+// ══════════════════════════════════════════════════════════════
+var relatives = [];
+
+function loadRelatives() {
+    var el = document.getElementById('relativesList');
+    el.innerHTML = '<div class="spin">Đang tải hồ sơ...</div>';
+    fetch('/Patient/GetMyProfiles')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+        relatives = Array.isArray(data) ? data : [];
+        renderRelatives();
+    })
+    .catch(function(){ el.innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-ttl">Lỗi tải dữ liệu</div><div class="empty-desc">Vui lòng thử lại sau.</div></div>'; });
+}
+
+function renderRelatives() {
+    var el = document.getElementById('relativesList');
+    if (!relatives.length) {
+        el.innerHTML = '<div class="empty" style="margin-bottom:14px"><div class="empty-ico">👨‍👩‍👧</div><div class="empty-ttl">Chưa có hồ sơ người thân</div><div class="empty-desc">Tạo hồ sơ để đặt lịch khám cho các thành viên trong gia đình</div></div>';
+        return;
+    }
+    var colors = ['#0a4d7c','#1a6fa8','#2d7a52','#7c3d0a','#5a0a7c'];
+    el.innerHTML = '<div class="profile-grid">'
+        + relatives.map(function(p, i){
+            var age = calcAge(p.dateOfBirth);
+            var ini = initials(p.fullName);
+            var col = colors[i % colors.length];
+            return '<div class="profile-card">'
+                + '<div class="profile-avatar" style="background:linear-gradient(135deg,'+col+','+col+'cc)">'+ini+'</div>'
+                + '<div class="profile-info">'
+                    + '<div class="profile-name">'+p.fullName+'</div>'
+                    + '<div class="profile-meta">'+p.gender+' · '+age+' tuổi · <span class="profile-code">'+p.recordCode+'</span></div>'
+                    + (p.medicalHistory ? '<div class="profile-history">📋 '+p.medicalHistory+'</div>' : '')
+                    + '<div class="profile-acts">'
+                        + '<button class="btn-sm btn-outline" onclick="openProfileForm('+p.id+')">✏ Sửa</button>'
+                        + '<button class="btn-sm btn-danger" data-id="'+p.id+'" data-name="'+p.fullName.replace(/"/g,'&quot;')+'" onclick="deleteProfile(+this.dataset.id,this.dataset.name)">🗑 Xoá</button>'
+                        + '<a class="btn-sm btn-primary-sm" href="/Booking">📅 Đặt lịch</a>'
+                    + '</div>'
+                + '</div></div>';
+        }).join('')
+        + '</div>';
+}
+
+function openProfileForm(id) {
+    document.getElementById('pfErr').style.display = 'none';
+    document.getElementById('pfOk').style.display  = 'none';
+    document.getElementById('pfId').value = id || 0;
+    document.getElementById('profileModalTitle').textContent = id ? '✏️ Sửa hồ sơ' : '👨‍👩‍👧 Thêm hồ sơ người thân';
+
+    if (id) {
+        var p = relatives.find(function(r){ return r.id === id; });
+        if (p) {
+            document.getElementById('pfName').value    = p.fullName || '';
+            document.getElementById('pfDob').value     = p.dateOfBirth ? p.dateOfBirth.substring(0,10) : '';
+            document.getElementById('pfGender').value  = p.gender || '';
+            document.getElementById('pfHistory').value = p.medicalHistory || '';
+        }
+    } else {
+        document.getElementById('pfName').value    = '';
+        document.getElementById('pfDob').value     = '';
+        document.getElementById('pfGender').value  = '';
+        document.getElementById('pfHistory').value = '';
+    }
+    document.getElementById('profileModal').classList.add('open');
+}
+function closeProfileForm() { document.getElementById('profileModal').classList.remove('open'); }
+
+function saveProfile() {
+    var name = document.getElementById('pfName').value.trim();
+    var dob  = document.getElementById('pfDob').value;
+    var gen  = document.getElementById('pfGender').value;
+    var err  = document.getElementById('pfErr');
+    err.style.display = 'none';
+
+    if (!name) { err.textContent='Vui lòng nhập họ và tên.'; err.style.display='block'; return; }
+    if (!dob)  { err.textContent='Vui lòng nhập ngày sinh.'; err.style.display='block'; return; }
+    if (!gen)  { err.textContent='Vui lòng chọn giới tính.'; err.style.display='block'; return; }
+
+    var dto = {
+        id            : parseInt(document.getElementById('pfId').value) || 0,
+        fullName      : name,
+        dateOfBirth   : dob,
+        gender        : gen,
+        medicalHistory: document.getElementById('pfHistory').value || null
+    };
+
+    var btn = document.querySelector('#profileModal .btn-modal-save');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+
+    fetch('/Patient/SaveProfile', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','RequestVerificationToken':csrf},
+        body: JSON.stringify(dto)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        btn.disabled = false; btn.textContent = '💾 Lưu hồ sơ';
+        if (d.success || d.Success) {
+            document.getElementById('pfOk').textContent = 'Lưu hồ sơ thành công!';
+            document.getElementById('pfOk').style.display = 'block';
+            setTimeout(function(){ closeProfileForm(); loadRelatives(); }, 1200);
+        } else {
+            err.textContent = d.message || d.Message || 'Có lỗi xảy ra.';
+            err.style.display = 'block';
+        }
+    })
+    .catch(function(){ btn.disabled=false; btn.textContent='💾 Lưu hồ sơ'; err.textContent='Lỗi kết nối.'; err.style.display='block'; });
+}
+
+function deleteProfile(id, name) {
+    if (!confirm('Xác nhận xoá hồ sơ "'+name+'"?\nHành động này không thể hoàn tác.')) return;
+    fetch('/Patient/DeleteProfile?id='+id, { method:'POST', headers:{'RequestVerificationToken':csrf} })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.success || d.Success) { showToast('Đã xoá hồ sơ thành công.', true); loadRelatives(); }
+        else showToast(d.message || 'Không thể xoá hồ sơ.', false);
+    })
+    .catch(function(){ showToast('Lỗi kết nối.', false); });
+}
+
+// ══════════════════════════════════════════════════════════════
+// TAB 4: HỒ SƠ CÁ NHÂN
+// ══════════════════════════════════════════════════════════════
+var personalData = {};
+
+function loadPersonal() {
+    fetch('/Patient/GetProfile')
+    .then(function(r){ return r.json(); })
+    .then(function(u){
+        personalData = u;
+        renderPersonal(u);
+    })
+    .catch(function(){
+        document.getElementById('personalCard').innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-ttl">Lỗi tải thông tin</div><div class="empty-desc">Vui lòng thử lại sau.</div></div>';
+    });
+}
+
+function renderPersonal(u) {
+    var ini = ((u.hoTenDem||'').split(' ').pop()||'').charAt(0).toUpperCase()
+            + (u.ten||'').charAt(0).toUpperCase();
+    document.getElementById('personalCard').innerHTML =
+        '<div class="personal-header">'
+            + '<div class="personal-avatar">'+ini+'</div>'
+            + '<div style="flex:1">'
+                + '<div class="personal-name">'+(u.fullName||u.username||'')+'</div>'
+                + '<div class="personal-role">Bệnh nhân · '+(u.email||'')+'</div>'
+            + '</div>'
+            + '<button class="btn-sm btn-outline" onclick="openPersonalForm()">✏ Chỉnh sửa</button>'
+        + '</div>'
+        + '<div class="personal-fields">'
+            + pfRow('Họ và tên đệm', u.hoTenDem)
+            + pfRow('Tên', u.ten)
+            + pfRow('Số điện thoại', u.phone)
+            + pfRow('Email', u.email)
+            + pfRow('Ngày sinh', u.ngaySinh ? new Date(u.ngaySinh).toLocaleDateString('vi-VN') : null)
+            + pfRow('Giới tính', u.gioiTinh)
+            + pfRow('Nhóm máu', u.nhomMau ? '<span class="pf-tag">🩸 '+u.nhomMau+'</span>' : null)
+            + pfRow('Địa chỉ', u.diaChi)
+        + '</div>';
+}
+
+function pfRow(label, val) {
+    var isHtml = val && val.includes('<');
+    return '<div class="pf-item">'
+        + '<div class="pf-lbl">'+label+'</div>'
+        + '<div class="pf-val '+(val?'':'pf-empty')+'">'
+            + (val ? (isHtml ? val : val) : 'Chưa cập nhật')
+        + '</div></div>';
+}
+
+function openPersonalForm() {
+    document.getElementById('pmHoTenDem').value = personalData.hoTenDem || '';
+    document.getElementById('pmTen').value       = personalData.ten || '';
+    document.getElementById('pmDob').value       = personalData.ngaySinh ? personalData.ngaySinh.substring(0,10) : '';
+    document.getElementById('pmGender').value    = personalData.gioiTinh || '';
+    document.getElementById('pmBlood').value     = personalData.nhomMau || '';
+    document.getElementById('pmAddr').value      = personalData.diaChi || '';
+    document.getElementById('pmPhone').value     = personalData.phone || '';
+    document.getElementById('pmErr').style.display = 'none';
+    document.getElementById('pmOk').style.display  = 'none';
+    document.getElementById('personalModal').classList.add('open');
+}
+function closePersonalForm() { document.getElementById('personalModal').classList.remove('open'); }
+
+function savePersonal() {
+    var dto = {
+        hoTenDem : document.getElementById('pmHoTenDem').value || null,
+        ten      : document.getElementById('pmTen').value || null,
+        ngaySinh : document.getElementById('pmDob').value || null,
+        gioiTinh : document.getElementById('pmGender').value || null,
+        nhomMau  : document.getElementById('pmBlood').value || null,
+        diaChi   : document.getElementById('pmAddr').value || null
+    };
+    var btn = document.querySelector('#personalModal .btn-modal-save');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+
+    fetch('/Patient/UpdateProfile', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','RequestVerificationToken':csrf},
+        body: JSON.stringify(dto)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        btn.disabled = false; btn.textContent = '💾 Lưu thay đổi';
+        if (d.success || d.Success) {
+            document.getElementById('pmOk').textContent = 'Cập nhật thành công!';
+            document.getElementById('pmOk').style.display = 'block';
+            setTimeout(function(){ closePersonalForm(); tabLoaded['profile']=false; loadPersonal(); }, 1200);
+        } else {
+            document.getElementById('pmErr').textContent = d.message || 'Có lỗi xảy ra.';
+            document.getElementById('pmErr').style.display = 'block';
+        }
+    })
+    .catch(function(){ btn.disabled=false; btn.textContent='💾 Lưu thay đổi'; document.getElementById('pmErr').textContent='Lỗi kết nối.'; document.getElementById('pmErr').style.display='block'; });
+}
+
+// ══════════════════════════════════════════════════════════════
+// TAB 5: THÔNG BÁO
+// ══════════════════════════════════════════════════════════════
+var notifData = [];
+var NOTIF_ICONS = { 'XacNhanLich':'✅','NhacLich':'🔔','HuyLich':'❌','DoiLich':'🔄' };
+
+function loadNotifs() {
+    document.getElementById('notifList').innerHTML = '<div class="spin">Đang tải thông báo...</div>';
+    fetch('/Patient/GetNotifications')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+        notifData = Array.isArray(data) ? data : [];
+        renderNotifs();
+        // Hiển thị badge
+        var unread = notifData.filter(function(n){ return !n.isRead; }).length;
+        var badge = document.getElementById('notifBadge');
+        if (unread > 0) { badge.textContent = unread; badge.style.display='inline-flex'; }
+    })
+    .catch(function(){ document.getElementById('notifList').innerHTML='<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-ttl">Lỗi tải thông báo</div></div>'; });
+}
+
+function renderNotifs() {
+    var el = document.getElementById('notifList');
+    if (!notifData.length) {
+        el.innerHTML = '<div class="empty"><div class="empty-ico">🔔</div><div class="empty-ttl">Không có thông báo nào</div><div class="empty-desc">Thông báo xác nhận lịch khám và nhắc lịch sẽ hiển thị tại đây</div></div>';
+        return;
+    }
+    el.innerHTML = notifData.map(function(n){
+        var ico = NOTIF_ICONS[n.type] || '📋';
+        return '<div class="notif-item '+(n.isRead?'':'unread')+'" id="nf-'+n.id+'" onclick="readNotif('+n.id+',this)">'
+            + '<div class="notif-ico">'+ico+'</div>'
+            + '<div class="notif-body">'
+                + '<div class="notif-title">'+n.title+'</div>'
+                + '<div class="notif-content">'+n.content+'</div>'
+                + '<div class="notif-time">🕐 '+n.sentAt+'</div>'
+            + '</div>'
+            + (!n.isRead ? '<div class="unread-dot"></div>' : '')
+            + '</div>';
+    }).join('');
+}
+
+function readNotif(id, el) {
+    if (!el.classList.contains('unread')) return;
+    el.classList.remove('unread');
+    var dot = el.querySelector('.unread-dot');
+    if (dot) dot.remove();
+    // Cập nhật badge
+    var unread = document.querySelectorAll('.notif-item.unread').length;
+    var badge = document.getElementById('notifBadge');
+    if (unread > 0) { badge.textContent = unread; }
+    else { badge.style.display='none'; }
+    fetch('/Patient/MarkNotifRead?id='+id, { method:'POST', headers:{'RequestVerificationToken':csrf} });
+}
+
+function readAllNotifs() {
+    var unreadItems = document.querySelectorAll('.notif-item.unread');
+    if (!unreadItems.length) { showToast('Tất cả đã được đọc.', true); return; }
+    unreadItems.forEach(function(el){
+        var idMatch = el.id.match(/nf-(\d+)/);
+        if (idMatch) readNotif(parseInt(idMatch[1]), el);
+    });
+    showToast('Đã đánh dấu tất cả đã đọc.', true);
+}
+
+// ── Khởi động ────────────────────────────────────────────────
+initSchedule();
+
+// Load badge thông báo nền (không cần bật tab)
+fetch('/Patient/GetNotifications')
+.then(function(r){ return r.json(); })
+.then(function(data){
+    var unread = Array.isArray(data) ? data.filter(function(n){ return !n.isRead; }).length : 0;
+    if (unread > 0) {
+        var b = document.getElementById('notifBadge');
+        b.textContent = unread; b.style.display='inline-flex';
+        if (!tabLoaded['notifs']) notifData = data;
+    }
+}).catch(function(){});
+</script>
+}

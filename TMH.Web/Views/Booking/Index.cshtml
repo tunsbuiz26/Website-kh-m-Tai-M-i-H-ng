@@ -1,4 +1,4 @@
-﻿@model List<TMH.Shared.DTOs.DoctorScheduleDto>
+@model List<TMH.Shared.DTOs.DoctorScheduleDto>
 @{
     ViewBag.Title = "Đặt lịch khám";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -588,8 +588,9 @@
     </div>
 </div>
 
+<script type="application/json" id="_doctorData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model))</script>
 <script>
-    var doctorData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model));
+    var doctorData = JSON.parse(document.getElementById('_doctorData').textContent || '[]');
     var selectedDoctor = null;
     var selectedSlot   = null;
     var preselectedDoctorId = @Html.Raw(string.IsNullOrEmpty(preselectedDoctorId) ? "0" : preselectedDoctorId);

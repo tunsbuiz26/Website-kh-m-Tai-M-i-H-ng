@@ -19,14 +19,149 @@ namespace TMH.Web.Controllers
     // ----------------------------------------------------------------
     public class PatientController : Controller
     {
+        private readonly ApiService _api;
+        public PatientController(ApiService api) { _api = api; }
+
         private bool IsPatient() =>
             HttpContext.Session.GetString("UserRole") == "Patient";
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             if (!IsPatient()) return RedirectToAction("AccessDenied", "Account");
             ViewBag.UserName = HttpContext.Session.GetString("UserName");
+
+            var raw = await _api.GetRawJsonAsync("api/appointment/my-appointments");
+            // Escape </script> để tránh HTML parser đóng thẻ sớm khi JSON
+            // chứa chuỗi đó trong các field Note hoặc Diagnosis
+            ViewBag.AppointmentsJson = (raw ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Cancel(int id)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.PostRawJsonAsync($"api/appointment/cancel/{id}", new { });
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // ── Hồ sơ người thân ──────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetMyProfiles()
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.GetRawJsonAsync("api/patient/my-profiles");
+            return Content(raw ?? "[]", "application/json");
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveProfile([FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var id = dto.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0;
+            string raw;
+            if (id > 0)
+                raw = await _api.PutRawJsonAsync($"api/patient", dto) ?? @"{""success"":false}";
+            else
+                raw = await _api.PostRawJsonAsync("api/patient", dto) ?? @"{""success"":false}";
+            return Content(raw, "application/json");
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteProfile(int id)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.DeleteRawJsonAsync($"api/patient/{id}");
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // ── Thông tin cá nhân ─────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetProfile()
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.GetRawJsonAsync("api/auth/me");
+            return Content(raw ?? "{}", "application/json");
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfile([FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync("api/auth/me", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // Alias cho Profile.cshtml gọi /Patient/UpdateInfo
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateInfo([FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync("api/auth/me", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // Alias cho Profile.cshtml gọi /Patient/CreatePatientProfile
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreatePatientProfile([FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.PostRawJsonAsync("api/patient", dto) ?? @"{""success"":false}";
+            return Content(raw, "application/json");
+        }
+
+        // Alias cho Profile.cshtml gọi /Patient/UpdatePatientProfile
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdatePatientProfile([FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync("api/patient", dto) ?? @"{""success"":false}";
+            return Content(raw, "application/json");
+        }
+
+        // Alias cho Profile.cshtml gọi /Patient/DeletePatientProfile
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeletePatientProfile(int id)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.DeleteRawJsonAsync($"api/patient/{id}");
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // ── Thông báo ─────────────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetNotifications()
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.GetRawJsonAsync("api/auth/notifications");
+            return Content(raw ?? "[]", "application/json");
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkNotifRead(int id)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync($"api/auth/notifications/{id}/read", new { });
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // Alias cho Notifications.cshtml gọi /Patient/MarkRead
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkRead(int id)
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync($"api/auth/notifications/{id}/read", new { });
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // ── Kết quả khám (appointments đã hoàn thành) ────────────
+        [HttpGet]
+        public async Task<IActionResult> GetCompletedAppointments()
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.GetRawJsonAsync("api/appointment/my-appointments");
+            return Content(raw ?? "[]", "application/json");
         }
 
         public IActionResult Book()
@@ -35,15 +170,29 @@ namespace TMH.Web.Controllers
             return View();
         }
 
-        public IActionResult Results()
+        public async Task<IActionResult> Results()
         {
             if (!IsPatient()) return RedirectToAction("AccessDenied", "Account");
+            var raw = await _api.GetRawJsonAsync("api/appointment/my-appointments");
+            ViewBag.AppointmentsJson = (raw ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             return View();
         }
 
-        public IActionResult Profile()
+        public async Task<IActionResult> Profile()
         {
             if (!IsPatient()) return RedirectToAction("AccessDenied", "Account");
+            var userRaw = await _api.GetRawJsonAsync("api/auth/me");
+            ViewBag.UserInfoJson = (userRaw ?? "{}").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
+            var profilesRaw = await _api.GetRawJsonAsync("api/patient/my-profiles");
+            ViewBag.ProfilesJson = (profilesRaw ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
+            return View();
+        }
+
+        public async Task<IActionResult> Notifications()
+        {
+            if (!IsPatient()) return RedirectToAction("AccessDenied", "Account");
+            var raw = await _api.GetRawJsonAsync("api/auth/notifications");
+            ViewBag.NotificationsJson = (raw ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             return View();
         }
     }
@@ -239,45 +388,45 @@ namespace TMH.Web.Controllers
             return View();
         }
 
-        // AJAX endpoints cho Admin dashboard
+        // AJAX endpoints cho Admin dashboard — dùng raw JSON forwarding tránh lỗi JSON casing
         [HttpGet]
         public async Task<IActionResult> GetStats()
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.GetAsync<object>("api/admin/stats");
-            return Json(data);
+            var raw = await _api.GetRawJsonAsync("api/admin/stats");
+            return Content(raw ?? "{}", "application/json");
         }
 
         [HttpGet]
         public async Task<IActionResult> GetWeeklyStats()
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.GetAsync<object>("api/admin/stats/weekly");
-            return Json(data);
+            var raw = await _api.GetRawJsonAsync("api/admin/stats/weekly");
+            return Content(raw ?? "[]", "application/json");
         }
 
         [HttpGet]
         public async Task<IActionResult> GetUsers()
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.GetAsync<object>("api/admin/users");
-            return Json(data);
+            var raw = await _api.GetRawJsonAsync("api/admin/users");
+            return Content(raw ?? "[]", "application/json");
         }
 
         [HttpGet]
         public async Task<IActionResult> GetDoctors()
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.GetAsync<object>("api/admin/doctors");
-            return Json(data);
+            var raw = await _api.GetRawJsonAsync("api/admin/doctors");
+            return Content(raw ?? "[]", "application/json");
         }
 
         [HttpGet]
         public async Task<IActionResult> GetStatsByDoctor()
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.GetAsync<object>("api/admin/stats/by-doctor");
-            return Json(data);
+            var raw = await _api.GetRawJsonAsync("api/admin/stats/by-doctor");
+            return Content(raw ?? "[]", "application/json");
         }
 
         [HttpPost]
@@ -285,8 +434,8 @@ namespace TMH.Web.Controllers
         public async Task<IActionResult> ToggleUserActive(int id)
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.PutAsync<object>($"api/admin/users/{id}/toggle-active", new { });
-            return Json(data);
+            var raw = await _api.PutRawJsonAsync($"api/admin/users/{id}/toggle-active", new { });
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
 
         [HttpPost]
@@ -294,8 +443,8 @@ namespace TMH.Web.Controllers
         public async Task<IActionResult> ToggleDoctorAvailable(int id)
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.PutAsync<object>($"api/admin/doctors/{id}/toggle-available", new { });
-            return Json(data);
+            var raw = await _api.PutRawJsonAsync($"api/admin/doctors/{id}/toggle-available", new { });
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
 
         // ── Lịch làm việc ────────────────────────────────────────────
@@ -304,20 +453,20 @@ namespace TMH.Web.Controllers
         {
             if (!IsAdmin()) return Unauthorized();
             var url = "api/admin/schedules?";
-            if (doctorId.HasValue) url += $"doctorId={doctorId}&";
+            if (doctorId.HasValue)           url += $"doctorId={doctorId}&";
             if (!string.IsNullOrEmpty(from)) url += $"from={from}&";
             if (!string.IsNullOrEmpty(to))   url += $"to={to}&";
-            var data = await _api.GetAsync<object>(url.TrimEnd('?', '&'));
-            return Json(data);
+            var raw = await _api.GetRawJsonAsync(url.TrimEnd('?', '&'));
+            return Content(raw ?? "[]", "application/json");
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateSchedule([FromBody] object dto)
+        public async Task<IActionResult> CreateSchedule([FromBody] System.Text.Json.JsonElement dto)
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.PostPublicAsync<object>("api/admin/schedules", dto);
-            return Json(data);
+            var raw = await _api.PostRawJsonAsync("api/admin/schedules", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
 
         [HttpPost]
@@ -325,17 +474,17 @@ namespace TMH.Web.Controllers
         public async Task<IActionResult> DeleteSchedule(int id)
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.DeleteAsync<object>($"api/admin/schedules/{id}");
-            return Json(data);
+            var raw = await _api.DeleteRawJsonAsync($"api/admin/schedules/{id}");
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateScheduleBatch([FromBody] object dto)
+        public async Task<IActionResult> CreateScheduleBatch([FromBody] System.Text.Json.JsonElement dto)
         {
             if (!IsAdmin()) return Unauthorized();
-            var data = await _api.PostPublicAsync<object>("api/admin/schedules/batch", dto);
-            return Json(data);
+            var raw = await _api.PostRawJsonAsync("api/admin/schedules/batch", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
 
         // ── Bài viết (Admin duyệt) ────────────────────────────────────

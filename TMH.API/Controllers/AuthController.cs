@@ -1,142 +1,150 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using TMH.API.Data;
 using TMH.API.Services;
 using TMH.Shared.DTOs;
 
 namespace TMH.API.Controllers
 {
-    /// <summary>
-    /// AuthController xử lý tất cả HTTP request liên quan đến xác thực.
-    ///
-    /// Nguyên tắc thiết kế:
-    ///   - Controller CHỈ làm 3 việc: nhận request, gọi service, trả response.
-    ///   - Không viết business logic trực tiếp trong controller.
-    ///   - Trả về ActionResult chuẩn HTTP (200, 400, 401, 403, 409...).
-    ///
-    /// [ApiController] tự động:
-    ///   - Validate ModelState (Data Annotations trong DTO)
-    ///   - Trả 400 Bad Request nếu validation thất bại
-    ///   - Bind JSON body vào parameter tự động
-    /// </summary>
     [ApiController]
-    [Route("api/[controller]")]   // → base route: /api/auth
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly AuthService _authService;
         private readonly ILogger<AuthController> _logger;
+        private readonly AppDbContext _db;
 
-        public AuthController(AuthService authService, ILogger<AuthController> logger)
+        public AuthController(AuthService authService, ILogger<AuthController> logger, AppDbContext db)
         {
             _authService = authService;
-            _logger      = logger;
+            _logger = logger;
+            _db = db;
         }
 
-        // =====================================================================
         // POST /api/auth/register
-        // Công khai — không cần token
-        // =====================================================================
-
-        /// <summary>
-        /// Đăng ký tài khoản bệnh nhân mới.
-        /// Trả về JWT token ngay sau khi đăng ký thành công (auto-login).
-        /// </summary>
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            // ModelState đã được [ApiController] validate tự động.
-            // Nếu đến được đây nghĩa là DTO hợp lệ về mặt format.
-
             var result = await _authService.RegisterAsync(dto);
-
-            if (!result.Success)
-            {
-                // 409 Conflict = resource (username/email) đã tồn tại
-                return Conflict(result);
-            }
-
-            _logger.LogInformation("Đăng ký thành công: {Username}", dto.Username);
+            if (!result.Success) return Conflict(result);
+            _logger.LogInformation("Dang ky thanh cong: {Username}", dto.Username);
             return Ok(result);
         }
 
-        // =====================================================================
         // POST /api/auth/login
-        // Công khai — không cần token
-        // =====================================================================
-
-        /// <summary>
-        /// Đăng nhập, nhận về JWT token.
-        /// Token này sẽ được Web App đính vào header "Authorization: Bearer {token}"
-        /// của mọi request tiếp theo đến các endpoint cần xác thực.
-        /// </summary>
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             var result = await _authService.LoginAsync(dto);
-
-            if (!result.Success)
-            {
-                // 401 Unauthorized = sai credentials
-                return Unauthorized(result);
-            }
-
-            _logger.LogInformation("Đăng nhập thành công: {User}", dto.UsernameOrEmail);
+            if (!result.Success) return Unauthorized(result);
+            _logger.LogInformation("Dang nhap thanh cong: {User}", dto.UsernameOrEmail);
             return Ok(result);
         }
 
-        // =====================================================================
         // GET /api/auth/profile
-        // Yêu cầu đăng nhập — bất kỳ role nào
-        // =====================================================================
-
-        /// <summary>
-        /// Lấy thông tin của user hiện tại từ JWT token.
-        /// [Authorize] không chỉ định Roles nghĩa là chấp nhận mọi role đã đăng nhập.
-        /// </summary>
         [HttpGet("profile")]
         [Authorize]
         public IActionResult GetProfile()
         {
-            // User là ClaimsPrincipal được ASP.NET Core tự inject từ JWT middleware
-            var userId   = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var username = User.FindFirst("username")?.Value;
-            var fullname = User.FindFirst("fullname")?.Value;
-            var role     = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-
+            var userId   = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var username = User.FindFirstValue("username");
+            var fullname = User.FindFirstValue("fullname");
+            var role     = User.FindFirstValue(ClaimTypes.Role);
             return Ok(new { userId, username, fullname, role });
         }
 
-        // =====================================================================
-        // GET /api/auth/admin-only
-        // Chỉ Admin — ví dụ minh hoạ phân quyền theo role
-        // =====================================================================
+        // GET /api/auth/me
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetMe()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            var user = await _db.Users.FindAsync(userId);
+            if (user == null) return NotFound();
+            return Ok(new
+            {
+                user.Id, user.HoTenDem, user.Ten, user.FullName,
+                user.Phone, user.Email, user.Username,
+                NgaySinh = user.NgaySinh.HasValue ? user.NgaySinh.Value.ToString("yyyy-MM-dd") : null,
+                user.GioiTinh, user.NhomMau, user.DiaChi
+            });
+        }
 
-        /// <summary>
-        /// Ví dụ endpoint chỉ Admin truy cập được.
-        /// [Authorize(Roles = "Admin")] sẽ trả 403 Forbidden nếu token không có role Admin.
-        /// Có thể kết hợp nhiều role: [Authorize(Roles = "Admin,Doctor")]
-        /// </summary>
+        // PUT /api/auth/me
+        [HttpPut("me")]
+        [Authorize]
+        public async Task<IActionResult> UpdateMe([FromBody] UpdateProfileDto dto)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            var user = await _db.Users.FindAsync(userId);
+            if (user == null) return NotFound();
+            if (dto.HoTenDem  != null) user.HoTenDem = dto.HoTenDem;
+            if (dto.Ten       != null) user.Ten       = dto.Ten;
+            if (dto.GioiTinh  != null) user.GioiTinh  = dto.GioiTinh;
+            if (dto.NgaySinh.HasValue) user.NgaySinh  = dto.NgaySinh;
+            if (dto.DiaChi    != null) user.DiaChi    = dto.DiaChi;
+            if (dto.NhomMau   != null) user.NhomMau   = dto.NhomMau;
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true, message = "Cap nhat thanh cong." });
+        }
+
+        // GET /api/auth/notifications
+        [HttpGet("notifications")]
+        [Authorize]
+        public async Task<IActionResult> GetNotifications()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            var notifs = await _db.Notifications
+                .Where(n => n.UserId == userId)
+                .OrderByDescending(n => n.SentAt)
+                .Take(20)
+                .Select(n => new
+                {
+                    n.Id, n.Title, n.Content, n.IsRead, n.AppointmentId,
+                    Type   = n.Type.ToString(),
+                    SentAt = n.SentAt.ToString("dd/MM/yyyy HH:mm")
+                })
+                .ToListAsync();
+            return Ok(notifs);
+        }
+
+        // PUT /api/auth/notifications/{id}/read
+        [HttpPut("notifications/{id:int}/read")]
+        [Authorize]
+        public async Task<IActionResult> MarkRead(int id)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+            var n = await _db.Notifications.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+            if (n == null) return NotFound();
+            n.IsRead = true;
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+        // Endpoints test phan quyen
         [HttpGet("admin-only")]
         [Authorize(Roles = "Admin")]
         public IActionResult AdminOnly()
-        {
-            return Ok(new { message = "Chào Quản trị viên! Bạn có toàn quyền hệ thống." });
-        }
+            => Ok(new { message = "Chao Quan tri vien! Ban co toan quyen he thong." });
 
         [HttpGet("doctor-staff")]
         [Authorize(Roles = "Admin,Doctor,Staff")]
         public IActionResult DoctorAndStaff()
-        {
-            return Ok(new { message = "Khu vực dành cho Bác sĩ và Nhân viên phòng khám." });
-        }
+            => Ok(new { message = "Khu vuc danh cho Bac si va Nhan vien phong kham." });
 
         [HttpGet("patient-area")]
         [Authorize(Roles = "Patient")]
         public IActionResult PatientArea()
-        {
-            return Ok(new { message = "Cổng bệnh nhân — xem lịch khám và kết quả của bạn." });
-        }
+            => Ok(new { message = "Cong benh nhan." });
+
         [HttpGet("genhash")]
         [AllowAnonymous]
         public IActionResult GenHash()
@@ -144,5 +152,15 @@ namespace TMH.API.Controllers
             string hash = BCrypt.Net.BCrypt.HashPassword("TMH@123456", workFactor: 12);
             return Ok(new { hash });
         }
+    }
+
+    public class UpdateProfileDto
+    {
+        public string?   HoTenDem { get; set; }
+        public string?   Ten      { get; set; }
+        public string?   GioiTinh { get; set; }
+        public DateTime? NgaySinh { get; set; }
+        public string?   DiaChi   { get; set; }
+        public string?   NhomMau  { get; set; }
     }
 }

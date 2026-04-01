@@ -1,0 +1,190 @@
+@{
+    ViewBag.Title = "Kết quả khám bệnh";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var apptJson = ViewBag.AppointmentsJson as string ?? "[]";
+}
+<style>
+    .rs-wrap { max-width: 900px; margin: 36px auto; padding: 0 20px; }
+    .rs-title { font-family:'Crimson Pro',serif; font-size:26px; font-weight:600; color:#0a4d7c; margin-bottom:4px; }
+    .rs-sub   { font-size:13px; color:#7a9bb0; margin-bottom:24px; }
+
+    /* List kết quả */
+    .rs-card { background:#fff; border:1px solid #d4e8f5; border-radius:14px; padding:18px 22px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+    .rs-card:hover { box-shadow:0 4px 16px rgba(10,77,124,.08); }
+    .rs-date { font-size:22px; font-weight:700; color:#0a4d7c; line-height:1; }
+    .rs-month { font-size:11px; color:#7a9bb0; text-transform:uppercase; }
+    .rs-date-box { text-align:center; background:#f0f8ff; border-radius:10px; padding:10px 14px; min-width:56px; flex-shrink:0; }
+    .rs-info { flex:1; }
+    .rs-doctor { font-size:14px; font-weight:500; color:#0a4d7c; margin-bottom:3px; }
+    .rs-meta { font-size:12px; color:#7a9bb0; }
+    .rs-diag { font-size:13px; color:#2d7a52; background:#f0faf4; border-left:3px solid #2d7a52; padding:6px 10px; border-radius:0 6px 6px 0; margin-top:8px; }
+    .btn-print { height:34px; padding:0 16px; background:#0a4d7c; color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; flex-shrink:0; }
+    .btn-print:hover { background:#1a6fa8; }
+    .empty-state { text-align:center; padding:48px; background:#fff; border:1px solid #d4e8f5; border-radius:14px; color:#7a9bb0; }
+
+    /* ── PHIẾU IN ───────────────────────────────────────── */
+    .print-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:flex-start; justify-content:center; overflow-y:auto; padding:20px; }
+    .print-modal.open { display:flex; }
+    .print-sheet { background:#fff; width:700px; max-width:100%; border-radius:8px; padding:40px; font-family:'Times New Roman',serif; position:relative; }
+
+    /* Nút điều khiển in */
+    .print-controls { display:flex; gap:10px; justify-content:flex-end; margin-bottom:20px; }
+    .btn-do-print { height:36px; padding:0 20px; background:#0a4d7c; color:#fff; border:none; border-radius:8px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+    .btn-close-print { height:36px; padding:0 16px; background:#f5f5f5; color:#555; border:none; border-radius:8px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+    /* Nội dung phiếu */
+    .phieu-header { text-align:center; border-bottom:2px solid #0a4d7c; padding-bottom:16px; margin-bottom:20px; }
+    .phieu-clinic { font-size:16px; font-weight:bold; color:#0a4d7c; text-transform:uppercase; }
+    .phieu-address { font-size:12px; color:#555; margin-top:4px; }
+    .phieu-title { font-size:22px; font-weight:bold; color:#0a4d7c; text-align:center; margin:20px 0 16px; letter-spacing:1px; }
+    .phieu-code { text-align:center; font-size:12px; color:#7a9bb0; margin-bottom:20px; }
+    .phieu-section { margin-bottom:16px; }
+    .phieu-section-title { font-size:13px; font-weight:bold; color:#0a4d7c; text-transform:uppercase; border-bottom:1px solid #d4e8f5; padding-bottom:4px; margin-bottom:10px; letter-spacing:.05em; }
+    .phieu-row { display:flex; gap:8px; margin-bottom:6px; font-size:13px; }
+    .phieu-label { color:#555; min-width:160px; flex-shrink:0; }
+    .phieu-value { color:#000; font-weight:500; flex:1; }
+    .phieu-diag-box { border:1.5px solid #0a4d7c; border-radius:6px; padding:12px 16px; margin:8px 0; font-size:14px; color:#0a4d7c; font-weight:500; min-height:60px; }
+    .phieu-note-box { border:1px solid #d4e8f5; border-radius:6px; padding:10px 14px; font-size:13px; color:#333; min-height:50px; }
+    .phieu-footer { margin-top:32px; display:flex; justify-content:space-between; }
+    .phieu-sign { text-align:center; }
+    .phieu-sign-title { font-size:13px; font-weight:bold; }
+    .phieu-sign-note { font-size:11px; color:#7a9bb0; margin-top:4px; }
+    .phieu-sign-space { height:60px; }
+    .phieu-watermark { text-align:center; font-size:11px; color:#bbb; margin-top:20px; border-top:1px solid #eee; padding-top:12px; }
+
+    @@media print {
+        body * { visibility: hidden; }
+        .print-sheet, .print-sheet * { visibility: visible; }
+        .print-sheet { position:fixed; left:0; top:0; width:100%; padding:20px; border-radius:0; }
+        .print-controls { display:none !important; }
+    }
+</style>
+
+<div class="rs-wrap">
+    <div class="rs-title">Kết quả khám bệnh</div>
+    <div class="rs-sub">Xem và in phiếu kết quả sau khi hoàn thành khám</div>
+    <div id="resultList"></div>
+</div>
+
+<!-- Modal phiếu in -->
+<div class="print-modal" id="printModal" onclick="if(event.target===this)closePrint()">
+    <div style="width:700px;max-width:100%;">
+        <div class="print-controls">
+            <button class="btn-close-print" onclick="closePrint()">✕ Đóng</button>
+            <button class="btn-do-print" onclick="window.print()">🖨 In phiếu</button>
+        </div>
+        <div class="print-sheet" id="printSheet">
+            <!-- Phiếu kết quả khám bệnh -->
+            <div class="phieu-header">
+                <div class="phieu-clinic">Phòng Khám Chuyên Khoa Tai Mũi Họng</div>
+                <div class="phieu-address">123 Đường Y Tế, Q.1, TP.HCM &nbsp;|&nbsp; Hotline: 1800 5678</div>
+            </div>
+
+            <div class="phieu-title">PHIẾU KẾT QUẢ KHÁM BỆNH</div>
+            <div class="phieu-code" id="pCode"></div>
+
+            <div class="phieu-section">
+                <div class="phieu-section-title">I. Thông tin bệnh nhân</div>
+                <div class="phieu-row"><span class="phieu-label">Họ và tên:</span><span class="phieu-value" id="pPatient"></span></div>
+                <div class="phieu-row"><span class="phieu-label">Ngày khám:</span><span class="phieu-value" id="pDate"></span></div>
+                <div class="phieu-row"><span class="phieu-label">Khung giờ:</span><span class="phieu-value" id="pTime"></span></div>
+                <div class="phieu-row"><span class="phieu-label">Mã đặt lịch:</span><span class="phieu-value" id="pBooking"></span></div>
+            </div>
+
+            <div class="phieu-section">
+                <div class="phieu-section-title">II. Thông tin bác sĩ</div>
+                <div class="phieu-row"><span class="phieu-label">Bác sĩ phụ trách:</span><span class="phieu-value" id="pDoctor"></span></div>
+                <div class="phieu-row"><span class="phieu-label">Chuyên khoa:</span><span class="phieu-value" id="pSpecialty"></span></div>
+            </div>
+
+            <div class="phieu-section">
+                <div class="phieu-section-title">III. Kết quả khám & Chẩn đoán</div>
+                <div class="phieu-diag-box" id="pDiagnosis">Chưa có kết quả chẩn đoán.</div>
+            </div>
+
+            <div class="phieu-section">
+                <div class="phieu-section-title">IV. Ghi chú</div>
+                <div class="phieu-note-box" id="pNote">Không có ghi chú.</div>
+            </div>
+
+            <div class="phieu-footer">
+                <div class="phieu-sign">
+                    <div class="phieu-sign-title">Bệnh nhân</div>
+                    <div class="phieu-sign-note">(Ký và ghi rõ họ tên)</div>
+                    <div class="phieu-sign-space"></div>
+                </div>
+                <div class="phieu-sign" style="text-align:right;">
+                    <div class="phieu-sign-title">Bác sĩ điều trị</div>
+                    <div class="phieu-sign-note" id="pDoctorSign"></div>
+                    <div class="phieu-sign-space"></div>
+                </div>
+            </div>
+
+            <div class="phieu-watermark">
+                Phiếu này có giá trị từ ngày khám. Vui lòng giữ để theo dõi lịch sử điều trị.<br>
+                © 2026 Phòng Khám Tai Mũi Họng — Hệ thống TMH Solution
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="_apptData">@Html.Raw(apptJson)</script>
+
+@section Scripts {
+<script>
+    var appts = [];
+    try {
+        appts = JSON.parse(document.getElementById('_apptData').textContent || '[]');
+        if (!Array.isArray(appts)) appts = [];
+
+        // Chỉ hiện lịch HoanThanh có chuẩn đoán
+        var done = appts.filter(function(a){ return a.status === 'HoanThanh'; })
+            .sort(function(a,b){ return new Date(b.workDate) - new Date(a.workDate); });
+
+        var el = document.getElementById('resultList');
+        if (!done.length) {
+            el.innerHTML = '<div class="empty-state"><div style="font-size:40px;margin-bottom:12px;">📋</div>' +
+                '<div style="font-size:15px;font-weight:500;color:#0a4d7c;margin-bottom:6px;">Chưa có kết quả khám</div>' +
+                '<div style="font-size:13px;">Kết quả sẽ hiện sau khi bác sĩ hoàn thành khám và ghi chẩn đoán.</div></div>';
+            return;
+        }
+
+        el.innerHTML = done.map(function(a) {
+            var d = new Date(a.workDate);
+            var day   = d.getDate().toString().padStart(2,'0');
+            var month = d.toLocaleString('vi-VN', {month:'short'});
+            var dateStr = d.toLocaleDateString('vi-VN', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
+            var diagHtml = a.diagnosis
+                ? '<div class="rs-diag">🩺 ' + a.diagnosis + '</div>'
+                : '<div style="font-size:12px;color:#aaa;margin-top:6px;font-style:italic;">Chưa có chẩn đoán</div>';
+            return '<div class="rs-card">' +
+                '<div class="rs-date-box"><div class="rs-date">' + day + '</div><div class="rs-month">' + month + '</div></div>' +
+                '<div class="rs-info">' +
+                    '<div class="rs-doctor">BS. ' + (a.doctorName||'') + '</div>' +
+                    '<div class="rs-meta">' + dateStr + ' · ' + (a.startTime||'') + '–' + (a.endTime||'') + ' · ' + (a.specialty||'') + '</div>' +
+                    diagHtml +
+                '</div>' +
+                '<button class="btn-print" data-idx="' + appts.indexOf(a) + '" onclick="openPrint(appts[+this.dataset.idx])">🖨 In phiếu</button>' +
+                '</div>';
+        }).join('');
+    } catch(e) { console.error('Results parse error:', e); }
+
+    function openPrint(a) {
+        var d = new Date(a.workDate);
+        var dateStr = d.toLocaleDateString('vi-VN', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
+        document.getElementById('pCode').textContent     = 'Mã phiếu: ' + (a.bookingCode||'');
+        document.getElementById('pPatient').textContent  = a.patientName || '';
+        document.getElementById('pDate').textContent     = dateStr;
+        document.getElementById('pTime').textContent     = (a.startTime||'') + ' – ' + (a.endTime||'');
+        document.getElementById('pBooking').textContent  = a.bookingCode  || '';
+        document.getElementById('pDoctor').textContent   = 'BS. ' + (a.doctorName||'');
+        document.getElementById('pSpecialty').textContent = a.specialty   || 'Tai Mũi Họng';
+        document.getElementById('pDiagnosis').textContent = a.diagnosis   || 'Chưa có kết quả chẩn đoán.';
+        document.getElementById('pNote').textContent     = a.note         || 'Không có ghi chú.';
+        document.getElementById('pDoctorSign').textContent = 'BS. ' + (a.doctorName||'');
+        document.getElementById('printModal').classList.add('open');
+    }
+
+    function closePrint() { document.getElementById('printModal').classList.remove('open'); }
+</script>
+}

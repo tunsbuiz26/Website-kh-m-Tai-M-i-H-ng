@@ -42,13 +42,16 @@
     </div>
 </div>
 
+<script type="application/json" id="_articleData">@Html.Raw(ViewBag.ArticleJson ?? "null")</script>
+<script type="application/json" id="_relatedData">@Html.Raw(ViewBag.RelatedJson ?? "[]")</script>
+
 @section Scripts {
 <script>
     var bgColors = ['linear-gradient(135deg,#e8f4fd,#d4ecf9)','linear-gradient(135deg,#fdf3d7,#fde8b0)','linear-gradient(135deg,#e6f7ef,#c9f0d8)','linear-gradient(135deg,#fdecea,#f9c9c9)'];
     var catIcons = {'Viêm xoang':'🤧','Thính học':'👂','Hồng — Thanh quản':'😴','TMH Nhi':'👶','Phẫu thuật nội soi':'🔬','Phòng ngừa':'💊','Khác':'📋'};
 
     try {
-        var article = @Html.Raw(ViewBag.ArticleJson ?? "null");
+        var article = JSON.parse(document.getElementById('_articleData').textContent || 'null');
         if (!article) throw new Error("not found");
 
         document.title = article.title + ' — Phòng khám Tai Mũi Họng';
@@ -76,7 +79,7 @@
 
     // Related articles
     try {
-        var related = @Html.Raw(ViewBag.RelatedJson ?? "[]");
+        var related = JSON.parse(document.getElementById('_relatedData').textContent || '[]');
         if (related.length) {
             document.getElementById('relatedSection').style.display = 'block';
             document.getElementById('relatedGrid').innerHTML = related.slice(0,3).map(function(a, i) {
