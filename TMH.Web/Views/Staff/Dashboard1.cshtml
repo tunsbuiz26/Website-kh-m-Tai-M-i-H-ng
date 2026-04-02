@@ -4,8 +4,6 @@
     var doctors = ViewBag.Doctors as List<TMH.Shared.DTOs.DoctorScheduleDto>
                   ?? new List<TMH.Shared.DTOs.DoctorScheduleDto>();
 }
-
-@section Styles {
 <style>
     .staff-wrap { max-width: 1100px; margin: 32px auto; padding: 0 20px; }
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
@@ -15,7 +13,11 @@
     /* Toolbar */
     .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fff; border: 1px solid #d4e8f5; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
     .toolbar label { font-size: 12px; font-weight: 500; color: #3a5a72; text-transform: uppercase; letter-spacing: .04em; }
-    .toolbar input[type=date], .toolbar select { height: 36px; border: 1px solid #d4e8f5; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #0d2d44; outline: none; font-family: 'DM Sans', sans-serif; background: #fff; }
+    .toolbar input[type=date], .toolbar select {
+        height: 36px; border: 1px solid #d4e8f5; border-radius: 8px;
+        padding: 0 10px; font-size: 13px; color: #0d2d44; outline: none;
+        font-family: 'DM Sans', sans-serif; background: #fff;
+    }
     .toolbar input[type=date]:focus, .toolbar select:focus { border-color: #1a6fa8; }
     .btn-load { height: 36px; padding: 0 18px; background: #0a4d7c; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
     .btn-load:hover { background: #1a6fa8; }
@@ -41,9 +43,8 @@
     .apt-table td { padding: 12px 14px; border-bottom: 1px solid #f0f4f8; vertical-align: middle; color: #0d2d44; }
     .apt-table tr:last-child td { border-bottom: none; }
     .apt-table tr:hover td { background: #f8fbff; }
-    .booking-code { font-family: monospace; font-size: 11px; background: #f0f8ff; padding: 2px 8px; border-radius: 4px; color: #1a6fa8; }
 
-    /* Badges */
+    .booking-code { font-family: monospace; font-size: 11px; background: #f0f8ff; padding: 2px 8px; border-radius: 4px; color: #1a6fa8; }
     .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
     .badge-cho     { background: #fff3cd; color: #856404; }
     .badge-xacnhan { background: #d1ecf1; color: #0c5460; }
@@ -55,19 +56,17 @@
 
     /* Action buttons */
     .action-group { display: flex; gap: 6px; flex-wrap: wrap; }
-    .btn-action { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid; font-family: 'DM Sans', sans-serif; white-space: nowrap; transition: all .15s; }
-
-    /* Lễ tân chỉ có 2 nút: Check-in và Vắng mặt */
-    .btn-checkin { background: #e8f4fd; color: #0a4d7c; border-color: #b8d8f0; }
+    .btn-action { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .btn-checkin  { background: #e8f4fd; color: #0a4d7c; border-color: #b8d8f0; }
     .btn-checkin:hover { background: #0a4d7c; color: #fff; }
-    .btn-vang    { background: #fdecea; color: #a32d2d; border-color: #f5c6c6; }
+    .btn-kham     { background: #d4edda; color: #155724; border-color: #b8ddc4; }
+    .btn-kham:hover { background: #155724; color: #fff; }
+    .btn-hoan     { background: #e2e3e5; color: #383d41; border-color: #ccc; }
+    .btn-hoan:hover { background: #383d41; color: #fff; }
+    .btn-vang     { background: #fdecea; color: #a32d2d; border-color: #f5c6c6; }
     .btn-vang:hover { background: #a32d2d; color: #fff; }
 
-    /* Nhãn readonly cho trạng thái bác sĩ xử lý */
-    .lbl-doctor { font-size: 11px; color: #7a9bb0; font-style: italic; padding: 0 4px; }
-
     .empty-state { text-align: center; padding: 48px 20px; color: #7a9bb0; font-size: 13px; }
-    .loading-row td { text-align: center; padding: 32px; color: #7a9bb0; }
 
     /* Modal walk-in */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 9998; align-items: center; justify-content: center; }
@@ -84,10 +83,8 @@
     .msg-err { background: #fdecea; border: 1px solid #f5c6c6; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; color: #c0392b; font-size: 12px; display: none; }
     .msg-ok  { background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; color: #2d7a52; font-size: 12px; display: none; }
 
-    /* Permission note */
-    .perm-note { font-size: 11px; color: #aab8c2; background: #f8fbff; border: 1px dashed #d4e8f5; border-radius: 6px; padding: 4px 10px; display: inline-block; }
+    .loading-row td { text-align: center; padding: 32px; color: #7a9bb0; }
 </style>
-}
 
 <div class="staff-wrap">
     <div class="page-header">
@@ -149,19 +146,13 @@
                     <th>Bác sĩ</th>
                     <th>Giờ khám</th>
                     <th>Trạng thái</th>
-                    <th>Thao tác (Lễ tân)</th>
+                    <th>Thao tác</th>
                 </tr>
             </thead>
             <tbody id="aptBody">
                 <tr class="loading-row"><td colspan="6">Chọn ngày và bấm "Xem lịch" để tải danh sách</td></tr>
             </tbody>
         </table>
-    </div>
-
-    <!-- Ghi chú phân quyền -->
-    <div style="margin-top: 14px; font-size: 12px; color: #aab8c2; line-height: 1.7;">
-        ℹ️ Lễ tân chỉ thực hiện: <strong>Check-in</strong> (bệnh nhân đã đến) và <strong>Vắng mặt</strong> (bệnh nhân không đến).<br>
-        Các bước <em>Bắt đầu khám</em> và <em>Hoàn thành</em> do bác sĩ thực hiện trên trang của bác sĩ.
     </div>
 </div>
 
@@ -206,14 +197,14 @@
 <script>
     var csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
     var doctorData = JSON.parse(document.getElementById('_doctorData').textContent || '[]');
+    var appointments = [];
 
     // Set default date = hôm nay
     document.getElementById('filterDate').value = new Date().toISOString().split('T')[0];
 
     // Load tự động khi trang load
-    document.addEventListener('DOMContentLoaded', loadAppointments);
+    window.addEventListener('DOMContentLoaded', loadAppointments);
 
-    // ── Load danh sách lịch ──────────────────────────────────────────
     function loadAppointments() {
         var date = document.getElementById('filterDate').value;
         if (!date) { alert('Vui lòng chọn ngày'); return; }
@@ -225,13 +216,16 @@
 
         fetch(url)
             .then(function(r) { return r.json(); })
-            .then(function(data) { renderTable(data); updateStats(data); })
+            .then(function(data) {
+                appointments = data;
+                renderTable(data);
+                updateStats(data);
+            })
             .catch(function() {
                 tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Lỗi kết nối. Vui lòng thử lại.</td></tr>';
             });
     }
 
-    // ── Render bảng ─────────────────────────────────────────────────
     function renderTable(data) {
         var tbody = document.getElementById('aptBody');
         if (!data.length) {
@@ -239,54 +233,45 @@
             return;
         }
 
-        var badgeMap = {
-            'ChoXacNhan': 'badge-cho',
-            'DaXacNhan':  'badge-xacnhan',
-            'DaDen':      'badge-den',
-            'DangKham':   'badge-kham',
-            'HoanThanh':  'badge-hoan',
-            'DaHuy':      'badge-huy',
-            'VangMat':    'badge-vang'
-        };
-
         tbody.innerHTML = data.map(function(a) {
-            var badge = '<span class="badge ' + (badgeMap[a.status] || 'badge-cho') + '">' + a.statusDisplay + '</span>';
-            var actions = buildStaffActions(a);
+            var badgeClass = {
+                'ChoXacNhan': 'badge-cho', 'DaXacNhan': 'badge-xacnhan',
+                'DaDen': 'badge-den', 'DangKham': 'badge-kham',
+                'HoanThanh': 'badge-hoan', 'DaHuy': 'badge-huy', 'VangMat': 'badge-vang'
+            }[a.status] || 'badge-cho';
+
+            var actions = buildActions(a);
+
             return '<tr>' +
                 '<td><span class="booking-code">' + a.bookingCode + '</span></td>' +
                 '<td><strong>' + a.patientName + '</strong></td>' +
                 '<td>' + a.doctorName + '<br><small style="color:#c9a227">' + a.specialty + '</small></td>' +
                 '<td>' + a.startTime + ' – ' + a.endTime + '</td>' +
-                '<td>' + badge + '</td>' +
+                '<td><span class="badge ' + badgeClass + '">' + a.statusDisplay + '</span></td>' +
                 '<td><div class="action-group">' + actions + '</div></td>' +
                 '</tr>';
         }).join('');
     }
 
-    // ── Thao tác lễ tân: CHỈ Check-in và Vắng mặt ──────────────────
-    // Vòng đời: ChoXacNhan / DaXacNhan → [Check-in] → DaDen → (bác sĩ xử lý tiếp)
-    //           ChoXacNhan / DaXacNhan → [Vắng mặt] → VangMat
-    function buildStaffActions(a) {
-        var s = a.status;
-
-        // Bệnh nhân chưa đến: lễ tân có thể Check-in hoặc đánh Vắng mặt
-        if (s === 'ChoXacNhan' || s === 'DaXacNhan') {
-            return '<button class="btn-action btn-checkin" onclick="doUpdate(' + a.id + ', \'DaDen\', \'check-in\')">✅ Check-in</button>' +
-                   '<button class="btn-action btn-vang"    onclick="doUpdate(' + a.id + ', \'VangMat\', \'đánh vắng mặt\')">❌ Vắng mặt</button>';
+    function buildActions(a) {
+        var btns = '';
+        if (a.status === 'ChoXacNhan' || a.status === 'DaXacNhan') {
+            btns += '<button class="btn-action btn-checkin" onclick="updateStatus(' + a.id + ',\'DaDen\')">Check-in</button>';
         }
-
-        // Bệnh nhân đã đến / đang khám / hoàn thành: lễ tân chỉ xem, không thao tác
-        if (s === 'DaDen')     return '<span class="lbl-doctor">⏳ Chờ bác sĩ bắt đầu</span>';
-        if (s === 'DangKham')  return '<span class="lbl-doctor">🩺 Đang trong phòng khám</span>';
-        if (s === 'HoanThanh') return '<span class="lbl-doctor">✔ Đã hoàn thành</span>';
-
-        // DaHuy / VangMat: không còn thao tác
-        return '<span style="font-size:11px;color:#bbb;">—</span>';
+        if (a.status === 'DaDen') {
+            btns += '<button class="btn-action btn-kham" onclick="updateStatus(' + a.id + ',\'DangKham\')">Bắt đầu khám</button>';
+            btns += '<button class="btn-action btn-vang" onclick="updateStatus(' + a.id + ',\'VangMat\')">Vắng mặt</button>';
+        }
+        if (a.status === 'DangKham') {
+            btns += '<button class="btn-action btn-hoan" onclick="updateStatus(' + a.id + ',\'HoanThanh\')">Hoàn thành</button>';
+        }
+        if (!btns) btns = '<span style="font-size:11px;color:#bbb;">—</span>';
+        return btns;
     }
 
-    // ── Cập nhật trạng thái ─────────────────────────────────────────
-    function doUpdate(appointmentId, newStatus, label) {
-        if (!confirm('Xác nhận ' + label + ' cho lịch khám này?')) return;
+    function updateStatus(appointmentId, newStatus) {
+        var label = { 'DaDen': 'check-in', 'DangKham': 'bắt đầu khám', 'HoanThanh': 'hoàn thành', 'VangMat': 'đánh vắng mặt' }[newStatus] || newStatus;
+        if (!confirm('Xác nhận ' + label + ' cho lịch này?')) return;
 
         fetch('/Staff/UpdateStatus', {
             method: 'POST',
@@ -304,7 +289,6 @@
         .catch(function() { alert('Lỗi kết nối'); });
     }
 
-    // ── Cập nhật thống kê ───────────────────────────────────────────
     function updateStats(data) {
         document.getElementById('statCho').textContent  = data.filter(function(a) { return a.status === 'ChoXacNhan' || a.status === 'DaXacNhan'; }).length;
         document.getElementById('statDen').textContent  = data.filter(function(a) { return a.status === 'DaDen'; }).length;
@@ -313,7 +297,7 @@
         document.getElementById('statHuy').textContent  = data.filter(function(a) { return a.status === 'DaHuy' || a.status === 'VangMat'; }).length;
     }
 
-    // ── Walk-in modal ────────────────────────────────────────────────
+    // ── Walk-in modal ─────────────────────────────────────────────
     function openWalkIn() {
         document.getElementById('wiErr').style.display = 'none';
         document.getElementById('wiOk').style.display  = 'none';
@@ -333,7 +317,7 @@
         if (!docId) return;
 
         var doc = doctorData.find(function(d) { return d.DoctorId === docId; });
-        if (!doc || !doc.AvailableSlots || !doc.AvailableSlots.length) {
+        if (!doc || !doc.AvailableSlots.length) {
             slotSel.innerHTML = '<option value="">Không có khung giờ trống</option>';
             return;
         }
@@ -346,17 +330,17 @@
     });
 
     function saveWalkIn() {
-        var doctorId   = parseInt(document.getElementById('wiDoctor').value);
+        var doctorId  = parseInt(document.getElementById('wiDoctor').value);
         var scheduleId = parseInt(document.getElementById('wiSlot').value);
         var patientId  = parseInt(document.getElementById('wiPatientId').value);
-        var note       = document.getElementById('wiNote').value.trim();
-        var errEl      = document.getElementById('wiErr');
-        var okEl       = document.getElementById('wiOk');
+        var note = document.getElementById('wiNote').value.trim();
+        var errEl = document.getElementById('wiErr');
+        var okEl  = document.getElementById('wiOk');
 
         errEl.style.display = 'none'; okEl.style.display = 'none';
 
-        if (!doctorId)   { errEl.textContent = 'Vui lòng chọn bác sĩ.';            errEl.style.display = 'block'; return; }
-        if (!scheduleId) { errEl.textContent = 'Vui lòng chọn khung giờ.';          errEl.style.display = 'block'; return; }
+        if (!doctorId)   { errEl.textContent = 'Vui lòng chọn bác sĩ.';      errEl.style.display = 'block'; return; }
+        if (!scheduleId) { errEl.textContent = 'Vui lòng chọn khung giờ.';   errEl.style.display = 'block'; return; }
         if (!patientId)  { errEl.textContent = 'Vui lòng nhập ID hồ sơ bệnh nhân.'; errEl.style.display = 'block'; return; }
 
         var btn = document.getElementById('wiSaveBtn');
@@ -372,7 +356,10 @@
             if (data.success) {
                 okEl.textContent = data.message;
                 okEl.style.display = 'block';
-                setTimeout(function() { closeWalkIn(); loadAppointments(); }, 1500);
+                setTimeout(function() {
+                    closeWalkIn();
+                    loadAppointments();
+                }, 1500);
             } else {
                 errEl.textContent = data.message || 'Có lỗi xảy ra.';
                 errEl.style.display = 'block';

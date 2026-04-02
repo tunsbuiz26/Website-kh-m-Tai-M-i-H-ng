@@ -18,6 +18,9 @@ builder.Services.AddControllersWithViews()
     {
         opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         opts.JsonSerializerOptions.DictionaryKeyPolicy  = System.Text.Json.JsonNamingPolicy.CamelCase;
+        // Bắt buộc: cho phép [FromBody] deserialize enum từ string ("DaDen" → AppointmentStatus.DaDen)
+        // Không có dòng này, JS gửi "DaDen" lên StaffController/DoctorController sẽ bị bind lỗi
+        opts.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 
 // --- Session: lưu JWT token và thông tin user sau khi đăng nhập ---

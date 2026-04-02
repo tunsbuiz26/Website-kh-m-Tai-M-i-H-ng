@@ -25,15 +25,26 @@ namespace TMH.Web.Controllers
         private bool IsPatient() =>
             HttpContext.Session.GetString("UserRole") == "Patient";
 
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
             if (!IsPatient()) return RedirectToAction("AccessDenied", "Account");
             ViewBag.UserName = HttpContext.Session.GetString("UserName");
 
             var raw = await _api.GetRawJsonAsync("api/appointment/my-appointments");
-            // Escape </script> để tránh HTML parser đóng thẻ sớm khi JSON
-            // chứa chuỗi đó trong các field Note hoặc Diagnosis
-            ViewBag.AppointmentsJson = (raw ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
+
+            // Validate: nếu raw không phải JSON array hợp lệ thì dùng "[]"
+            // Tránh trường hợp API trả HTML error page hoặc null gây SyntaxError ở browser
+            string safeJson;
+            try
+            {
+                var trimmed = (raw ?? "").Trim();
+                safeJson = (trimmed.StartsWith("[") && trimmed.EndsWith("]")) ? trimmed : "[]";
+            }
+            catch { safeJson = "[]"; }
+
+            ViewBag.AppointmentsJson = safeJson
+                .Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             return View();
         }
 

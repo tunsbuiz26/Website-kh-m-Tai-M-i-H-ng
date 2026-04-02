@@ -113,6 +113,9 @@ builder.Services.AddControllers()
     {
         opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         opts.JsonSerializerOptions.DictionaryKeyPolicy  = System.Text.Json.JsonNamingPolicy.CamelCase;
+        // Serialize/deserialize enum dưới dạng tên string (VD: "DaDen") thay vì số nguyên (3)
+        // Bắt buộc để StaffController.UpdateStatus nhận đúng newStatus từ JavaScript
+        opts.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 
 // --- Swagger UI: tài liệu API tự động, tích hợp nút "Authorize" với JWT ---

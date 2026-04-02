@@ -135,7 +135,7 @@ namespace TMH.Web.Services
             }
         }
 
-                public async Task<string?> DeleteRawJsonAsync(string endpoint)
+        public async Task<string?> DeleteRawJsonAsync(string endpoint)
         {
             AttachToken();
             try
@@ -150,7 +150,7 @@ namespace TMH.Web.Services
             }
         }
 
-                public async Task<T?> GetAsync<T>(string endpoint)
+        public async Task<T?> GetAsync<T>(string endpoint)
         {
             AttachToken();
             try

@@ -189,17 +189,17 @@
     </footer>
 
     <script>
-        // Toggle dropdown menu người dùng
+        // Toggle dropdown menu ng\u01B0\u1EDDi d\u00F9ng
         function toggleDropdown() {
             document.getElementById('dropdownMenu').classList.toggle('open');
         }
-        // Nhấn ngoài dropdown thì đóng lại
+        // Nh\u1EA5n ngo\u00E0i dropdown th\u00EC \u0111\u00F3ng l\u1EA1i
         document.addEventListener('click', function(e) {
             var dd = document.getElementById('userDropdown');
             if (dd && !dd.contains(e.target))
                 document.getElementById('dropdownMenu')?.classList.remove('open');
         });
-        // Tự ẩn thông báo sau 4 giây
+        // T\u1EF1 \u1EA9n th\u00F4ng b\u00E1o sau 4 gi\u00E2y
         setTimeout(function() {
             document.getElementById('globalAlert')?.remove();
             document.getElementById('globalAlertErr')?.remove();
@@ -519,7 +519,7 @@
         var tmhIsOpen   = false;
         var tmhIsBusy   = false;
 
-        // Hiện badge "1" khi trang load để thu hút chú ý
+        // Hi\u1EC7n badge "1" khi trang load \u0111\u1EC3 thu h\u00FAt ch\u00FA \u00FD
         setTimeout(function () {
             var badge = document.getElementById('tmhBadge');
             if (badge && !tmhIsOpen) badge.classList.add('show');
@@ -529,7 +529,7 @@
             tmhIsOpen = !tmhIsOpen;
             document.getElementById('tmhWindow').classList.toggle('open', tmhIsOpen);
             if (tmhIsOpen) {
-                // Ẩn badge khi mở
+                // \u1EA8n badge khi m\u1EDF
                 document.getElementById('tmhBadge').classList.remove('show');
                 document.getElementById('tmhInput').focus();
             }
@@ -552,7 +552,7 @@
 
             var av = document.createElement('div');
             av.className = 'tmh-msg-av';
-            av.textContent = role === 'bot' ? '🤖' : '🧑';
+            av.textContent = role === 'bot' ? '\uD83E\uDD16' : '\uD83E\uDDD1';
 
             var bub = document.createElement('div');
             bub.className = 'tmh-bub';
@@ -573,7 +573,7 @@
 
             var av = document.createElement('div');
             av.className = 'tmh-msg-av';
-            av.textContent = '🤖';
+            av.textContent = '\uD83E\uDD16';
 
             var bub = document.createElement('div');
             bub.className = 'tmh-bub';
@@ -612,25 +612,25 @@
             tmhIsBusy = true;
             tmhShowTyping();
 
-            // Gọi qua ChatProxyController của TMH.Web (giữ nguyên luồng backend)
+            // G\u1ECDi qua ChatProxyController c\u1EE7a TMH.Web (gi\u1EEF nguy\u00EAn lu\u1ED3ng backend)
             fetch('/api/chat-proxy', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({
                     message: msg,
-                    history: tmhHistory.slice(-10)   // tối đa 10 tin gần nhất, giống TakeLast(10) trong C#
+                    history: tmhHistory.slice(-10)   // t\u1ED1i \u0111a 10 tin g\u1EA7n nh\u1EA5t, gi\u1ED1ng TakeLast(10) trong C#
                 })
             })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 tmhRemoveTyping();
-                var reply = data.reply || 'Xin lỗi, có lỗi xảy ra. Vui lòng thử lại.';
+                var reply = data.reply || 'Xin l\u1ED7i, c\u00F3 l\u1ED7i x\u1EA3y ra. Vui l\u00F2ng th\u1EED l\u1EA1i.';
                 tmhHistory.push({ role: 'assistant', content: reply });
                 tmhAppend('bot', tmhFormatText(reply));
             })
             .catch(function() {
                 tmhRemoveTyping();
-                tmhAppend('bot', 'Không kết nối được đến máy chủ. Vui lòng thử lại hoặc gọi hotline <strong>1900 xxxx</strong>.');
+                tmhAppend('bot', 'Kh\u00F4ng k\u1EBFt n\u1ED1i \u0111\u01B0\u1EE3c \u0111\u1EBFn m\u00E1y ch\u1EE7. Vui l\u00F2ng th\u1EED l\u1EA1i ho\u1EB7c g\u1ECDi hotline <strong>1900 xxxx</strong>.');
             })
             .finally(function() {
                 tmhIsBusy = false;
