@@ -18,4 +18,8 @@
     <!-- Shared DTOs dùng để bind form data (RegisterDto, LoginDto) -->
     <ProjectReference Include="..\TMH.Shared\TMH.Shared.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\js\" />
+  </ItemGroup>
 </Project>

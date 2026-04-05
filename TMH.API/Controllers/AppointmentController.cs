@@ -81,6 +81,29 @@ namespace TMH.API.Controllers
             return Ok(result);
         }
 
+        // PUT /api/appointment/reschedule
+        // Lễ tân đổi lịch khám (đổi bác sĩ hoặc đổi khung giờ)
+        [HttpPut("reschedule")]
+        [Authorize(Roles = "Admin,Staff")]
+        public async Task<IActionResult> Reschedule([FromBody] RescheduleDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _svc.RescheduleAsync(dto);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        // GET /api/appointment/search?q=...
+        // Lễ tân tìm kiếm toàn bộ lịch khám theo BookingCode hoặc tên bệnh nhân
+        [HttpGet("search")]
+        [Authorize(Roles = "Admin,Staff")]
+        public async Task<IActionResult> Search([FromQuery] string q)
+        {
+            var result = await _svc.SearchAsync(q);
+            return Ok(result);
+        }
+
         // PUT /api/appointment/update-status
         // Lễ tân và bác sĩ cập nhật trạng thái
         [HttpPut("update-status")]

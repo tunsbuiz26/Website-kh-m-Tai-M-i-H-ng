@@ -227,6 +227,155 @@ namespace TMH.API.Controllers
             return Ok(new { Success = true, Message = msg, Created = created, Skipped = skipped });
         }
 
+        // ── Thống kê theo tháng (12 tháng gần nhất) ─────────────────
+        [HttpGet("stats/monthly")]
+        public async Task<IActionResult> GetMonthlyStats()
+        {
+            var from = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-11);
+            var apts = await _db.Appointments.Include(a => a.Schedule)
+                           .Where(a => a.Schedule.WorkDate >= from).ToListAsync();
+
+            var result = Enumerable.Range(0, 12).Select(i =>
+            {
+                var d   = from.AddMonths(i);
+                var month = apts.Where(a => a.Schedule.WorkDate.Year  == d.Year
+                                         && a.Schedule.WorkDate.Month == d.Month).ToList();
+                return new
+                {
+                    Label     = d.ToString("MM/yyyy"),
+                    Total     = month.Count,
+                    Completed = month.Count(a => a.Status == AppointmentStatus.HoanThanh),
+                    Cancelled = month.Count(a => a.Status == AppointmentStatus.DaHuy
+                                             || a.Status == AppointmentStatus.VangMat)
+                };
+            });
+            return Ok(result);
+        }
+
+        // ── Thống kê chi tiết để xuất báo cáo ───────────────────────
+        [HttpGet("stats/report")]
+        public async Task<IActionResult> GetReportStats(
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to)
+        {
+            var f = from?.Date ?? DateTime.Today.AddMonths(-1);
+            var t = to?.Date   ?? DateTime.Today;
+
+            var apts = await _db.Appointments
+                .Include(a => a.Schedule)
+                .Include(a => a.Doctor)
+                .Include(a => a.Patient)
+                .Where(a => a.Schedule.WorkDate.Date >= f && a.Schedule.WorkDate.Date <= t)
+                .OrderBy(a => a.Schedule.WorkDate)
+                .ToListAsync();
+
+            var total     = apts.Count;
+            var completed = apts.Count(a => a.Status == AppointmentStatus.HoanThanh);
+            var cancelled = apts.Count(a => a.Status == AppointmentStatus.DaHuy || a.Status == AppointmentStatus.VangMat);
+            var pending   = total - completed - cancelled;
+
+            var byDoctor = apts
+                .GroupBy(a => a.Doctor?.FullName ?? "—")
+                .Select(g => new {
+                    Doctor    = g.Key,
+                    Total     = g.Count(),
+                    Completed = g.Count(a => a.Status == AppointmentStatus.HoanThanh),
+                    Cancelled = g.Count(a => a.Status == AppointmentStatus.DaHuy || a.Status == AppointmentStatus.VangMat)
+                })
+                .OrderByDescending(x => x.Total)
+                .ToList();
+
+            return Ok(new {
+                From      = f.ToString("dd/MM/yyyy"),
+                To        = t.ToString("dd/MM/yyyy"),
+                total,completed, cancelled, Pending = pending,
+                CompletionRate = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0,
+                CancellationRate = total > 0 ? Math.Round((double)cancelled / total * 100, 1) : 0,
+                ByDoctor  = byDoctor
+            });
+        }
+
+        // ── Tạo tài khoản Staff / Doctor (Admin tạo hộ) ─────────────
+        [HttpPost("users")]
+        public async Task<IActionResult> CreateUser([FromBody] AdminCreateUserDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (dto.Role != UserRole.Staff && dto.Role != UserRole.Doctor)
+                return BadRequest(new { Success = false, Message = "Chỉ được tạo tài khoản Staff hoặc Doctor." });
+
+            bool usernameTaken = await _db.Users.AnyAsync(u => u.Username == dto.Username.ToLower());
+            if (usernameTaken)
+                return Conflict(new { Success = false, Message = "Tên đăng nhập đã tồn tại." });
+
+            bool emailTaken = await _db.Users.AnyAsync(u => u.Email == dto.Email.ToLower());
+            if (emailTaken)
+                return Conflict(new { Success = false, Message = "Email đã được sử dụng." });
+
+            string hash = BCrypt.Net.BCrypt.HashPassword(dto.Password, workFactor: 12);
+            var user = new User
+            {
+                HoTenDem = dto.HoTenDem.Trim(),
+                Ten      = dto.Ten.Trim(),
+                Phone    = dto.Phone.Trim(),
+                Email    = dto.Email.ToLower().Trim(),
+                Username = dto.Username.ToLower().Trim(),
+                PasswordHash = hash,
+                Role     = dto.Role,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+
+            // Nếu là Doctor thì tự động tạo bản ghi Doctor
+            if (dto.Role == UserRole.Doctor)
+            {
+                var doctor = new Doctor
+                {
+                    UserId      = user.Id,
+                    FullName    = user.FullName,
+                    Specialty   = dto.Specialty?.Trim() ?? "Tai Mũi Họng",
+                    Degree      = dto.Degree?.Trim(),
+                    Description = dto.Description?.Trim(),
+                    IsAvailable = true
+                };
+                _db.Doctors.Add(doctor);
+                await _db.SaveChangesAsync();
+            }
+
+            return Ok(new { Success = true, Message = "Tạo tài khoản thành công.", UserId = user.Id });
+        }
+
+        // ── Reset mật khẩu tài khoản ─────────────────────────────────
+        [HttpPut("users/{id:int}/reset-password")]
+        public async Task<IActionResult> ResetPassword(int id, [FromBody] ResetPasswordDto dto)
+        {
+            var user = await _db.Users.FindAsync(id);
+            if (user == null) return NotFound(new { Success = false, Message = "Không tìm thấy tài khoản." });
+            if (string.IsNullOrWhiteSpace(dto.NewPassword) || dto.NewPassword.Length < 8)
+                return BadRequest(new { Success = false, Message = "Mật khẩu mới phải ít nhất 8 ký tự." });
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword, workFactor: 12);
+            await _db.SaveChangesAsync();
+            return Ok(new { Success = true, Message = "Đã đặt lại mật khẩu thành công." });
+        }
+
+        // ── Sửa thông tin bác sĩ ────────────────────────────────────
+        [HttpPut("doctors/{id:int}")]
+        public async Task<IActionResult> UpdateDoctor(int id, [FromBody] DoctorUpdateDto dto)
+        {
+            var doc = await _db.Doctors.FindAsync(id);
+            if (doc == null) return NotFound(new { Success = false, Message = "Không tìm thấy bác sĩ." });
+
+            if (!string.IsNullOrWhiteSpace(dto.FullName))    doc.FullName    = dto.FullName.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Specialty))   doc.Specialty   = dto.Specialty.Trim();
+            if (dto.Degree      != null) doc.Degree      = dto.Degree.Trim();
+            if (dto.Description != null) doc.Description = dto.Description.Trim();
+
+            await _db.SaveChangesAsync();
+            return Ok(new { Success = true, Message = "Cập nhật thông tin bác sĩ thành công." });
+        }
+
         [HttpDelete("schedules/{id:int}")]
         public async Task<IActionResult> DeleteSchedule(int id)
         {
@@ -272,5 +421,33 @@ namespace TMH.API.Controllers
     {
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime   { get; set; }
+    }
+
+    public class AdminCreateUserDto
+    {
+        public string HoTenDem   { get; set; } = string.Empty;
+        public string Ten        { get; set; } = string.Empty;
+        public string Phone      { get; set; } = string.Empty;
+        public string Email      { get; set; } = string.Empty;
+        public string Username   { get; set; } = string.Empty;
+        public string Password   { get; set; } = string.Empty;
+        public UserRole Role     { get; set; }
+        // Doctor-specific (chỉ dùng khi Role == Doctor)
+        public string? Specialty    { get; set; }
+        public string? Degree       { get; set; }
+        public string? Description  { get; set; }
+    }
+
+    public class ResetPasswordDto
+    {
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
+    public class DoctorUpdateDto
+    {
+        public string? FullName    { get; set; }
+        public string? Specialty   { get; set; }
+        public string? Degree      { get; set; }
+        public string? Description { get; set; }
     }
 }

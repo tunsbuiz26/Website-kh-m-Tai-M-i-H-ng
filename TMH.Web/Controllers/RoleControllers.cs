@@ -25,27 +25,25 @@ namespace TMH.Web.Controllers
         private bool IsPatient() =>
             HttpContext.Session.GetString("UserRole") == "Patient";
 
-        [HttpGet]
         public async Task<IActionResult> Index()
         {
             if (!IsPatient()) return RedirectToAction("AccessDenied", "Account");
             ViewBag.UserName = HttpContext.Session.GetString("UserName");
 
             var raw = await _api.GetRawJsonAsync("api/appointment/my-appointments");
-
-            // Validate: nếu raw không phải JSON array hợp lệ thì dùng "[]"
-            // Tránh trường hợp API trả HTML error page hoặc null gây SyntaxError ở browser
-            string safeJson;
-            try
-            {
-                var trimmed = (raw ?? "").Trim();
-                safeJson = (trimmed.StartsWith("[") && trimmed.EndsWith("]")) ? trimmed : "[]";
-            }
-            catch { safeJson = "[]"; }
-
-            ViewBag.AppointmentsJson = safeJson
-                .Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
+            // Escape </script> để tránh HTML parser đóng thẻ sớm khi JSON
+            // chứa chuỗi đó trong các field Note hoặc Diagnosis
+            ViewBag.AppointmentsJson = (raw ?? "[]").Replace("</script>", "<\\/script>", StringComparison.OrdinalIgnoreCase);
             return View();
+        }
+
+        // GET /Patient/GetMyAppointments — AJAX, trả JSON để JS reload sau hủy lịch
+        [HttpGet]
+        public async Task<IActionResult> GetMyAppointments()
+        {
+            if (!IsPatient()) return Unauthorized();
+            var raw = await _api.GetRawJsonAsync("api/appointment/my-appointments");
+            return Content(raw ?? "[]", "application/json");
         }
 
         [HttpPost]
@@ -360,6 +358,17 @@ namespace TMH.Web.Controllers
             return Json(list ?? new List<AppointmentDetailDto>());
         }
 
+        // GET /Staff/SearchAppointments?q=... — AJAX tìm kiếm toàn bộ DB
+        [HttpGet]
+        public async Task<IActionResult> SearchAppointments(string q)
+        {
+            if (!IsStaff()) return Unauthorized();
+            if (string.IsNullOrWhiteSpace(q))
+                return Content("[]", "application/json");
+            var raw = await _api.GetRawJsonAsync($"api/appointment/search?q={Uri.EscapeDataString(q)}");
+            return Content(raw ?? "[]", "application/json");
+        }
+
         // POST /Staff/UpdateStatus — AJAX cập nhật trạng thái
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -368,6 +377,27 @@ namespace TMH.Web.Controllers
             if (!IsStaff()) return Unauthorized();
             var result = await _api.UpdateAppointmentStatusAsync(dto);
             return Json(result);
+        }
+
+        // GET /Staff/GetSlotsForReschedule?date=2026-04-10&doctorId=1
+        // Trả về danh sách slot còn trống theo ngày + bác sĩ — dùng cho modal đổi lịch
+        [HttpGet]
+        public async Task<IActionResult> GetSlotsForReschedule(string date, int? doctorId)
+        {
+            if (!IsStaff()) return Unauthorized();
+            var url = $"api/appointment/available-doctors?date={date}";
+            var raw = await _api.GetRawJsonAsync(url);
+            return Content(raw ?? "[]", "application/json");
+        }
+
+        // PUT /Staff/Reschedule — AJAX đổi lịch khám
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Reschedule([FromBody] RescheduleDto dto)
+        {
+            if (!IsStaff()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync("api/appointment/reschedule", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
 
         // POST /Staff/CreateWalkIn — tạo lịch walk-in tại chỗ
@@ -469,6 +499,57 @@ namespace TMH.Web.Controllers
             if (!string.IsNullOrEmpty(to))   url += $"to={to}&";
             var raw = await _api.GetRawJsonAsync(url.TrimEnd('?', '&'));
             return Content(raw ?? "[]", "application/json");
+        }
+
+        // ── Thống kê theo tháng ───────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetMonthlyStats()
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var raw = await _api.GetRawJsonAsync("api/admin/stats/monthly");
+            return Content(raw ?? "[]", "application/json");
+        }
+
+        // ── Báo cáo tổng hợp theo khoảng ngày ────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetReportStats(string? from, string? to)
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var url = "api/admin/stats/report?";
+            if (!string.IsNullOrEmpty(from)) url += $"from={from}&";
+            if (!string.IsNullOrEmpty(to))   url += $"to={to}&";
+            var raw = await _api.GetRawJsonAsync(url.TrimEnd('?', '&'));
+            return Content(raw ?? "{}", "application/json");
+        }
+
+        // ── Tạo tài khoản Staff / Doctor ─────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateUser([FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var raw = await _api.PostRawJsonAsync("api/admin/users", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // ── Reset mật khẩu ────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(int id, [FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync($"api/admin/users/{id}/reset-password", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
+        }
+
+        // ── Sửa thông tin bác sĩ ─────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateDoctor(int id, [FromBody] System.Text.Json.JsonElement dto)
+        {
+            if (!IsAdmin()) return Unauthorized();
+            var raw = await _api.PutRawJsonAsync($"api/admin/doctors/{id}", dto);
+            return Content(raw ?? @"{""success"":false}", "application/json");
         }
 
         [HttpPost]

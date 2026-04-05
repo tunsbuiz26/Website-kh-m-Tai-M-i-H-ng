@@ -440,6 +440,10 @@
             background: #1a6fa8;
         }
 
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
     .msg-err {
         background: #fdecea;
         border: 1px solid #f5c6c6;
@@ -504,7 +508,7 @@
                 </div>
             </div>
 
-            <!-- Bước 2: Chọn khung giờ -->
+            <!-- Bước 2: Chọn ngày + khung giờ -->
             <div class="form-section" id="sec2" style="display:none">
                 <div class="form-section-title">
                     Chọn ca khám —
@@ -514,7 +518,27 @@
                         Ô xanh = còn chỗ trống
                     </span>
                 </div>
-                <div class="slot-grid" id="slotGrid"></div>
+
+                <!-- Date picker -->
+                <div style="margin-bottom:20px;">
+                    <label class="form-label">Chọn ngày khám</label>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <input type="date" id="datePicker" class="form-control"
+                               style="max-width:200px;margin-bottom:0;"
+                               onchange="onDateChange()" />
+                        <div id="dateLoadingSpinner" style="display:none;font-size:12px;color:#7a9bb0;">
+                            <span style="display:inline-block;width:14px;height:14px;border:2px solid #d4e8f5;border-top-color:#0a4d7c;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;"></span>
+                            Đang tải ca khám...
+                        </div>
+                    </div>
+                    <div id="dateHint" style="font-size:12px;color:#7a9bb0;margin-top:6px;">
+                        📅 Vui lòng chọn ngày để xem các ca khám còn trống
+                    </div>
+                </div>
+
+                <div class="slot-grid" id="slotGrid">
+                    <p style="color:#7a9bb0;font-size:13px;grid-column:1/-1;">Chọn ngày để xem ca khám</p>
+                </div>
             </div>
 
             <!-- Bước 3: Hồ sơ + ghi chú -->
@@ -613,76 +637,171 @@
         selectedDoctor = doctorData.find(d => d.DoctorId === docId);
         document.getElementById('selDoctorName').textContent = name;
 
-        renderSlots(selectedDoctor, name, spec);
-
+        // Hiện bước 2, reset slot + date
         document.getElementById('sec2').style.display = 'block';
         document.getElementById('step2-bar').classList.add('active');
         selectedSlot = null;
         document.getElementById('hScheduleId').value = '';
+        document.getElementById('sec3').style.display = 'none';
+        document.getElementById('summaryBox').style.display = 'none';
+        document.getElementById('step3-bar').classList.remove('active');
+
+        // Set min date = hôm nay
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm   = String(today.getMonth()+1).padStart(2,'0');
+        var dd   = String(today.getDate()).padStart(2,'0');
+        var todayStr = yyyy+'-'+mm+'-'+dd;
+        var picker = document.getElementById('datePicker');
+        picker.min = todayStr;
+        // Giữ ngày đã chọn nếu hợp lệ, không thì reset
+        if (!picker.value || picker.value < todayStr) {
+            picker.value = '';
+            document.getElementById('slotGrid').innerHTML =
+                '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1;">Chọn ngày để xem ca khám</p>';
+            document.getElementById('dateHint').style.display = 'block';
+        } else {
+            onDateChange();
+        }
         checkReady();
+        document.getElementById('sec2').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Chia mỗi WorkSchedule thành các ca 60–90 phút, tối đa 5 ca
-    function renderSlots(doctor, docName, spec) {
+    function onDateChange() {
+        var picker = document.getElementById('datePicker');
+        var dateVal = picker.value;
+        if (!dateVal || !selectedDoctor) return;
+
+        document.getElementById('dateHint').style.display = 'none';
+        document.getElementById('dateLoadingSpinner').style.display = 'flex';
+        document.getElementById('slotGrid').innerHTML = '';
+
+        // Reset slot đang chọn
+        selectedSlot = null;
+        document.getElementById('hScheduleId').value = '';
+        document.getElementById('sec3').style.display = 'none';
+        document.getElementById('summaryBox').style.display = 'none';
+        document.getElementById('step3-bar').classList.remove('active');
+        checkReady();
+
+        fetch('/Booking/GetSlotsByDate?doctorId=' + selectedDoctor.DoctorId + '&date=' + dateVal)
+            .then(r => r.json())
+            .then(function(data) {
+                document.getElementById('dateLoadingSpinner').style.display = 'none';
+                if (!data.success) {
+                    document.getElementById('slotGrid').innerHTML =
+                        '<p style="color:#c0392b;font-size:13px;grid-column:1/-1;">Có lỗi khi tải ca khám.</p>';
+                    return;
+                }
+                renderSlotsFromApi(data.slots, selectedDoctor.FullName, selectedDoctor.Specialty, dateVal);
+            })
+            .catch(function() {
+                document.getElementById('dateLoadingSpinner').style.display = 'none';
+                document.getElementById('slotGrid').innerHTML =
+                    '<p style="color:#c0392b;font-size:13px;grid-column:1/-1;">Không kết nối được máy chủ.</p>';
+            });
+    }
+
+    function renderSlotsFromApi(slots, docName, spec, dateVal) {
         var grid = document.getElementById('slotGrid');
         grid.innerHTML = '';
-        if (!doctor || !doctor.AvailableSlots.length) {
-            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1">Không có ca khám trống</p>';
+
+        if (!slots || !slots.length) {
+            var d = new Date(dateVal + 'T00:00:00');
+            var dateDisplay = d.toLocaleDateString('vi-VN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1;">Không có ca khám trống vào ' + dateDisplay + '. Vui lòng chọn ngày khác.</p>';
             return;
         }
 
-        var allCa = [];
-        doctor.AvailableSlots.forEach(function (s) {
-            splitToCa(s).forEach(function (ca) { allCa.push(ca); });
-        });
+        // Map từng ca cố định → WorkSchedule phù hợp (overlap)
+        // Mỗi ca lấy remaining từ chính schedule của ca đó, không cộng dồn
+        FIXED_CA.forEach(function(ca) {
+            // Tìm schedule nào bao phủ ca này
+            var match = slots.find(function(s) {
+                var ss = toMin(s.startTime || s.StartTime);
+                var se = toMin(s.endTime   || s.EndTime);
+                return ca.start >= ss && ca.end <= se;
+            });
+            if (!match) return; // Ca này không nằm trong lịch làm việc → bỏ qua
 
-        if (!allCa.length) {
-            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1">Không có ca khám trống</p>';
-            return;
-        }
+            var rem     = match.remainingSlots  || match.RemainingSlots  || 0;
+            var maxPat  = match.maxPatients      || match.MaxPatients      || 5;
+            var curPat  = match.currentPatients  || match.CurrentPatients  || (maxPat - rem);
+            var slotObj = {
+                ScheduleId:  match.scheduleId  || match.ScheduleId,
+                WorkDate:    match.workDate    || match.WorkDate,
+                startLabel:  toTime(ca.start),
+                endLabel:    toTime(ca.end),
+                remaining:   rem,
+                maxPatients: maxPat,
+                currentPatients: curPat
+            };
 
-        allCa.forEach(function (ca) {
             var btn = document.createElement('div');
-            btn.className = 'slot-btn';
-            var d   = new Date(ca.WorkDate);
-            var day = d.toLocaleDateString('vi-VN', { weekday: 'short' });
-            var dt  = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            btn.className = 'slot-btn' + (rem === 0 ? ' full' : '');
             btn.innerHTML =
-                '<div style="font-size:10px;color:#7a9bb0;margin-bottom:2px;">' + day + ' ' + dt + '</div>' +
-                '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">' + ca.startLabel + ' – ' + ca.endLabel + '</div>' +
-                '<div class="slot-available"><span class="slot-dot"></span>' + ca.remaining + ' / 5 chỗ trống</div>';
-            btn.onclick = function () { selectSlot(ca, docName, spec, btn); };
+                '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">' + slotObj.startLabel + ' – ' + slotObj.endLabel + '</div>' +
+                '<div class="slot-available"><span class="slot-dot"></span>' + curPat + ' / ' + maxPat + ' đã đặt — còn ' + rem + ' chỗ</div>';
+            if (rem > 0) {
+                (function(so) { btn.onclick = function() { selectSlot(so, docName, spec, btn); }; })(slotObj);
+            } else {
+                btn.title = 'Ca này đã đầy';
+                btn.style.opacity = '0.45';
+                btn.style.cursor  = 'not-allowed';
+                btn.style.animation = 'none';
+            }
             grid.appendChild(btn);
         });
+
+        if (!grid.children.length) {
+            var d = new Date(dateVal + 'T00:00:00');
+            var dateDisplay = d.toLocaleDateString('vi-VN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+            grid.innerHTML = '<p style="color:#7a9bb0;font-size:13px;grid-column:1/-1;">Không có ca khám trống vào ' + dateDisplay + '.</p>';
+        }
     }
 
+    // Ca cố định: 07-09, 09-11, 13-15, 15-17
+    var FIXED_CA = [
+        { start: 7*60,  end: 9*60  },
+        { start: 9*60,  end: 11*60 },
+        { start: 13*60, end: 15*60 },
+        { start: 15*60, end: 17*60 }
+    ];
+
     function splitToCa(s) {
-        var result   = [];
-        var startMin = toMin(s.StartTime);
-        var endMin   = toMin(s.EndTime);
-        var total    = endMin - startMin;
-        if (total <= 0) return result;
+        var result     = [];
+        var schedStart = toMin(s.startTime || s.StartTime);
+        var schedEnd   = toMin(s.endTime   || s.EndTime);
+        var remaining  = s.remainingSlots || s.RemainingSlots || 1;
+        var maxPat     = s.maxPatients || 5;
 
-        // Mỗi ca 60–90 phút, tối đa 5 ca
-        var caMin   = total <= 90 ? total : (total <= 180 ? 90 : 60);
-        var maxCa   = Math.min(5, Math.floor(total / caMin));
-        var perSlot = Math.max(1, Math.floor(Math.min(5, s.RemainingSlots) / maxCa));
+        // Lọc các ca cố định nằm trong khung giờ làm việc của bác sĩ
+        var matched = FIXED_CA.filter(function(ca) {
+            return ca.start >= schedStart && ca.end <= schedEnd;
+        });
 
-        for (var i = 0; i < maxCa; i++) {
-            var cs = startMin + i * caMin;
-            var ce = cs + caMin;
-            result.push({
-                ScheduleId: s.ScheduleId,
-                WorkDate:   s.WorkDate,
-                startLabel: toTime(cs),
-                endLabel:   toTime(ce),
-                remaining:  perSlot
-            });
+        // Nếu không khớp ca nào (lịch lẻ), fallback 1 ca bằng cả slot
+        if (!matched.length) {
+            matched = [{ start: schedStart, end: schedEnd }];
         }
+
+        var perSlot = Math.max(1, Math.floor(remaining / matched.length));
+
+        matched.forEach(function(ca) {
+            result.push({
+                ScheduleId:  s.scheduleId  || s.ScheduleId,
+                WorkDate:    s.workDate    || s.WorkDate,
+                startLabel:  toTime(ca.start),
+                endLabel:    toTime(ca.end),
+                remaining:   perSlot,
+                maxPatients: maxPat
+            });
+        });
+
         return result;
     }
 
-    function toMin(t) { var p = (t || '00:00').split(':'); return +p[0] * 60 + +p[1]; }
+    function toMin(t) { var p = (t || '00:00:00').split(':'); return +p[0] * 60 + +p[1]; }
     function toTime(m) { var h = Math.floor(m/60), mn = m%60; return (h<10?'0':'')+h+':'+(mn<10?'0':'')+mn; }
 
     function selectSlot(slot, docName, spec, el) {

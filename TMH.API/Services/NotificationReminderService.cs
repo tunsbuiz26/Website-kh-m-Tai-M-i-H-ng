@@ -24,7 +24,7 @@ namespace TMH.API.Services
             ILogger<NotificationReminderService> logger)
         {
             _scopeFactory = scopeFactory;
-            _logger = logger;
+            _logger       = logger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -62,7 +62,7 @@ namespace TMH.API.Services
 
             // Lấy các lịch khám ngày mai còn hoạt động
             var appointments = await db.Appointments
-                .Include(a => a.Patient)
+                .Include(a => a.Patient).ThenInclude(p => p.User)
                 .Include(a => a.Doctor)
                 .Include(a => a.Schedule)
                 .Where(a =>
@@ -89,7 +89,7 @@ namespace TMH.API.Services
                     Title = "Nhắc lịch khám ngày mai",
                     Content = $"Bạn có lịch khám vào ngày mai " +
                                    $"{apt.Schedule.WorkDate:dd/MM/yyyy} " +
-                                   $"lúc {apt.Schedule.StartTime:hh\\:mm} " +
+                                   $"lúc {(int)apt.Schedule.StartTime.TotalHours:D2}:{apt.Schedule.StartTime.Minutes:D2} " +
                                    $"với {apt.Doctor.FullName}. " +
                                    $"Mã lịch: {apt.BookingCode}. " +
                                    $"Vui lòng đến đúng giờ.",
@@ -106,6 +106,29 @@ namespace TMH.API.Services
             {
                 await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Đã tạo {Count} thông báo nhắc lịch.", count);
+
+                // Gửi email nhắc lịch (fire-and-forget)
+                var emailSvc = scope.ServiceProvider.GetRequiredService<EmailService>();
+                foreach (var apt in appointments)
+                {
+                    bool alreadySentCheck = await db.Notifications.AnyAsync(n =>
+                        n.AppointmentId == apt.Id &&
+                        n.Type == NotificationType.NhacLich, ct);
+                    if (!alreadySentCheck) continue; // Chỉ gửi email nếu notification vừa được tạo
+
+                    var userEmail = apt.Patient?.User?.Email ?? "";
+                    var userName  = $"{apt.Patient?.User?.HoTenDem} {apt.Patient?.User?.Ten}".Trim();
+
+                    _ = emailSvc.SendReminderAsync(
+                        userEmail, userName,
+                        apt.BookingCode,
+                        apt.Doctor?.FullName ?? "",
+                        apt.Schedule.WorkDate.ToString("dd/MM/yyyy"),
+                        $"{(int)apt.Schedule.StartTime.TotalHours:D2}:{apt.Schedule.StartTime.Minutes:D2}",
+                        $"{(int)apt.Schedule.EndTime.TotalHours:D2}:{apt.Schedule.EndTime.Minutes:D2}",
+                        apt.Patient?.FullName ?? ""
+                    );
+                }
             }
             else
             {

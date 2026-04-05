@@ -152,6 +152,30 @@ namespace TMH.API.Controllers
             string hash = BCrypt.Net.BCrypt.HashPassword("TMH@123456", workFactor: 12);
             return Ok(new { hash });
         }
+
+        // GET /api/auth/test-email?to=abc@gmail.com
+        // Chỉ dùng để test, xoá hoặc comment lại sau khi verify xong
+        [HttpGet("test-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TestEmail([FromQuery] string to, [FromServices] EmailService emailSvc)
+        {
+            if (string.IsNullOrWhiteSpace(to))
+                return BadRequest(new { success = false, message = "Thiếu tham số ?to=email" });
+
+            await emailSvc.SendBookingConfirmationAsync(
+                toEmail    : to,
+                toName     : "Bệnh Nhân Test",
+                bookingCode: "APT-2026-99999",
+                doctorName : "TS.BS. Nguyễn Thanh Vân",
+                workDate   : DateTime.Today.AddDays(1).ToString("dd/MM/yyyy"),
+                startTime  : "09:00",
+                endTime    : "11:00",
+                patientName: "Nguyễn Văn Test",
+                note       : "Đây là email test từ hệ thống TMH."
+            );
+
+            return Ok(new { success = true, message = $"Đã gửi email test đến {to}. Kiểm tra hộp thư (kể cả thư mục Spam)." });
+        }
     }
 
     public class UpdateProfileDto

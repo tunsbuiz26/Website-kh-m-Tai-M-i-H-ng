@@ -77,6 +77,33 @@ namespace TMH.API.Services
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
+            // --- Bước 3b: Tự động tạo hồ sơ bệnh nhân (Patient) cho tài khoản mới ---
+            // Giúp người dùng có thể đặt lịch ngay mà không cần tạo hồ sơ thủ công
+            if (dto.Role == UserRole.Patient)
+            {
+                int patientCount = await _db.Patients.CountAsync();
+                string recordCode = $"BN-{DateTime.Now.Year}-{(patientCount + 1):D4}";
+                // Đảm bảo mã không trùng
+                while (await _db.Patients.AnyAsync(p => p.RecordCode == recordCode))
+                {
+                    patientCount++;
+                    recordCode = $"BN-{DateTime.Now.Year}-{(patientCount + 1):D4}";
+                }
+
+                var patient = new Patient
+                {
+                    UserId        = user.Id,
+                    FullName      = user.FullName,
+                    DateOfBirth   = user.NgaySinh ?? DateTime.Today.AddYears(-18),
+                    Gender        = user.GioiTinh ?? "Khác",
+                    RecordCode    = recordCode,
+                    MedicalHistory= null,
+                    CreatedAt     = DateTime.UtcNow
+                };
+                _db.Patients.Add(patient);
+                await _db.SaveChangesAsync();
+            }
+
             // --- Bước 4: Cấp token ngay sau khi đăng ký ---
             var (token, expiry) = _jwt.GenerateToken(user);
 

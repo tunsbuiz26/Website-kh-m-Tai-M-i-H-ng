@@ -71,6 +71,20 @@ namespace TMH.Shared.DTOs
     }
 
     /// <summary>
+    /// DTO lễ tân dùng khi đổi lịch khám (đổi bác sĩ hoặc đổi giờ)
+    /// </summary>
+    public class RescheduleDto
+    {
+        [Required]
+        public int AppointmentId { get; set; }
+
+        [Required]
+        public int NewScheduleId { get; set; }   // WorkSchedule mới
+
+        public string? Note { get; set; }        // Lý do đổi lịch (tuỳ chọn)
+    }
+
+    /// <summary>
     /// DTO trả về danh sách bác sĩ + lịch làm việc còn trống
     /// — dùng để render dropdown chọn bác sĩ và khung giờ trên form đặt lịch
     /// </summary>
@@ -89,6 +103,8 @@ namespace TMH.Shared.DTOs
         public DateTime WorkDate { get; set; }
         public string StartTime { get; set; } = string.Empty;
         public string EndTime { get; set; } = string.Empty;
+        public int MaxPatients { get; set; }
+        public int CurrentPatients { get; set; }
         public int RemainingSlots { get; set; }   // MaxPatients - CurrentPatients
     }
 }

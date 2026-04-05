@@ -335,9 +335,11 @@
             <div class="apt-card" data-status="@apt.Status" data-upcoming="@isUpcoming.ToString().ToLower()">
                 <!-- Cột ngày -->
                 <div class="apt-date-col">
-                    <div class="apt-day">@apt.WorkDate.ToString("dd")</div>
-                    <div class="apt-month">Tháng @apt.WorkDate.ToString("MM")</div>
-                    <div class="apt-month">@apt.WorkDate.Year</div>
+                    <div style="font-size:10px;color:#7a9bb0;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em;">
+                        @apt.WorkDate.ToString("ddd", new System.Globalization.CultureInfo("vi-VN"))
+                    </div>
+                    <div class="apt-day">@apt.WorkDate.Day</div>
+                    <div class="apt-month">Th@(apt.WorkDate.Month)/@apt.WorkDate.Year</div>
                 </div>
 
                 <!-- Nội dung chính -->

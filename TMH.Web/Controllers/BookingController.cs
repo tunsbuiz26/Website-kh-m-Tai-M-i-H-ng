@@ -103,6 +103,21 @@ namespace TMH.Web.Controllers
             return RedirectToAction("MyAppointments");
         }
 
+        // GET /Booking/GetSlotsByDate?doctorId=1&date=2026-04-05 (AJAX)
+        [HttpGet]
+        public async Task<IActionResult> GetSlotsByDate(int doctorId, DateTime date)
+        {
+            if (HttpContext.Session.GetString("JwtToken") == null)
+                return Json(new { success = false, message = "Chưa đăng nhập." });
+
+            var doctors = await _api.GetAvailableDoctorsAsync(date);
+            var doc = doctors?.FirstOrDefault(d => d.DoctorId == doctorId);
+            if (doc == null)
+                return Json(new { success = true, slots = new List<object>() });
+
+            return Json(new { success = true, slots = doc.AvailableSlots });
+        }
+
         // POST /Booking/CreatePatient (AJAX) — tạo hồ sơ mới ngay trên trang đặt lịch
         [HttpPost]
         [ValidateAntiForgeryToken]
